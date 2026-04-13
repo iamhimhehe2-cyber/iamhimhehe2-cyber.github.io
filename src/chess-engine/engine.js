@@ -14,6 +14,12 @@ export const ALL_ABILITIES = [
   { id: 'diagonalRook', name: 'Diagonal Rook', desc: 'Rooks can also move 1 square diagonally.' },
   { id: 'straightBishop', name: 'Straight Bishop', desc: 'Bishops can also move 1 square straight.' },
   { id: 'stoutKing', name: 'Stout King', desc: 'The King can capture friendly pieces to escape check.' },
+  { id: 'amazonQueen', name: 'Amazon Queen', desc: 'Queen gains Knight movement abilities.' },
+  { id: 'assassinPawn', name: 'Assassin Pawn', desc: 'Pawns can capture pieces straight ahead.' },
+  { id: 'swapKnight', name: 'Swap Knight', desc: 'Knights can swap places with friendly pieces.' },
+  { id: 'fortressRook', name: 'Fortress Rook', desc: 'Rooks cannot be captured by Knights or Bishops.' },
+  { id: 'leapingPawn', name: 'Leaping Pawn', desc: 'Pawns can jump exactly one piece directly in front of them.' },
+  { id: 'modernKnight', name: 'Modern Knight', desc: 'Knight shoots orthogonally to stun a piece for 1 turn. 5 hits kills.' },
   
   // King Rule Awakened Cards
   { id: 'king_ghostRook', name: 'Awakened: Ghost King', desc: 'King acts as a Ghost Rook (infinite reach).' },
@@ -25,7 +31,13 @@ export const ALL_ABILITIES = [
   { id: 'king_heavyQueen', name: 'Awakened: Heavy King', desc: 'King is completely immune to Pawns.' },
   { id: 'king_diagonalRook', name: 'Awakened: Diagonal King', desc: 'King extends diagonal reach to 2 squares.' },
   { id: 'king_straightBishop', name: 'Awakened: Straight King', desc: 'King extends straight reach to 2 squares.' },
-  { id: 'king_stoutKing', name: 'Awakened: True Stout', desc: 'Retains King sacrifice powers.' }
+  { id: 'king_stoutKing', name: 'Awakened: True Stout', desc: 'Retains King sacrifice powers.' },
+  { id: 'king_amazonQueen', name: 'Awakened: Amazon King', desc: 'King gains Knight jump.' },
+  { id: 'king_assassinPawn', name: 'Awakened: Assassin King', desc: 'King can capture without moving directly forward.' },
+  { id: 'king_swapKnight', name: 'Awakened: Swap King', desc: 'King can swap places with any friendly piece.' },
+  { id: 'king_fortressRook', name: 'Awakened: Fortress King', desc: 'King cannot be targeted by Knights or Bishops.' },
+  { id: 'king_leapingPawn', name: 'Awakened: Leaping King', desc: 'King can leap over 1 piece.' },
+  { id: 'king_modernKnight', name: 'Awakened: Gun King', desc: 'King can shoot orthogonally.' }
 ];
 
 export function createInitialState() {
@@ -86,6 +98,8 @@ export function getAllPseudoLegalMoves(state, color) {
 
 export function getPseudoLegalMovesForPiece(state, r, c, piece, abilities) {
   const moves = [];
+  if (piece.stunTimer > 0) return moves;
+
   const { board } = state;
   const isWhite = piece.color === 'w';
   const dir = isWhite ? -1 : 1;
@@ -102,6 +116,15 @@ export function getPseudoLegalMovesForPiece(state, r, c, piece, abilities) {
       if (piece.type === 'k' && abilities.includes('stoutKing')) return true;
       return false;
     }
+    // Fortress Rook check
+    if (target && target.type === 'r') {
+      const targetAbilities = state.cards[target.color] || [];
+      if (targetAbilities.includes('fortressRook') && ['n','b'].includes(piece.type)) return false;
+    }
+    if (target && target.type === 'k') {
+      const targetAbilities = state.cards[target.color] || [];
+      if (targetAbilities.includes('king_fortressRook') && ['n','b'].includes(piece.type)) return false;
+    }
     return target && target.color !== piece.color;
   };
 
@@ -115,19 +138,23 @@ export function getPseudoLegalMovesForPiece(state, r, c, piece, abilities) {
 
   if (piece.type === 'p') {
     // Normal forward
-    if (isInside(r + dir, c) && isEmpty(r + dir, c)) {
-      addMove(r + dir, c, false);
-      // Double push
-      if (abilities.includes('relentlessPawn')) {
-        if (isInside(r + 2 * dir, c) && isEmpty(r + 2 * dir, c)) {
-          addMove(r + 2 * dir, c, false);
-        }
-      } else {
-        if ((isWhite && r === 6) || (!isWhite && r === 1)) {
+    if (isInside(r + dir, c)) {
+      if (isEmpty(r + dir, c)) {
+        addMove(r + dir, c, false);
+        // Double push
+        if (abilities.includes('relentlessPawn')) {
           if (isInside(r + 2 * dir, c) && isEmpty(r + 2 * dir, c)) {
             addMove(r + 2 * dir, c, false);
           }
+        } else {
+          if ((isWhite && r === 6) || (!isWhite && r === 1)) {
+            if (isInside(r + 2 * dir, c) && isEmpty(r + 2 * dir, c)) {
+              addMove(r + 2 * dir, c, false);
+            }
+          }
         }
+      } else if (abilities.includes('assassinPawn') && canCapture(r + dir, c)) {
+        addMove(r + dir, c, true);
       }
     }
     // Captures
@@ -142,6 +169,11 @@ export function getPseudoLegalMovesForPiece(state, r, c, piece, abilities) {
     if (abilities.includes('retreatingPawn')) {
       if (isInside(r - dir, c) && isEmpty(r - dir, c)) addMove(r - dir, c, false);
     }
+    if (abilities.includes('leapingPawn')) {
+      if (isInside(r + 2*dir, c) && !isEmpty(r + dir, c) && isEmpty(r + 2*dir, c)) {
+        addMove(r + 2*dir, c, false);
+      }
+    }
   }
 
   const knightDirs = [[-2, -1], [-2, 1], [-1, -2], [-1, 2], [1, -2], [1, 2], [2, -1], [2, 1]];
@@ -151,6 +183,9 @@ export function getPseudoLegalMovesForPiece(state, r, c, piece, abilities) {
       if (isInside(nr, nc)) {
         if (isEmpty(nr, nc)) addMove(nr, nc, false);
         else if (canCapture(nr, nc)) addMove(nr, nc, true);
+        else if (abilities.includes('swapKnight') && !isEmpty(nr, nc) && board[nr][nc].color === piece.color && board[nr][nc].type !== 'k') {
+          moves.push({ from: {r, c}, to: {r: nr, c: nc}, isSwap: true, piece });
+        }
       }
     }
     if (abilities.includes('royalKnight')) {
@@ -160,6 +195,18 @@ export function getPseudoLegalMovesForPiece(state, r, c, piece, abilities) {
         if (isInside(nr, nc)) {
           if (isEmpty(nr, nc)) addMove(nr, nc, false);
           else if (canCapture(nr, nc)) addMove(nr, nc, true);
+        }
+      }
+    }
+    if (abilities.includes('modernKnight')) {
+      for (const [dr, dc] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+        let cr = r + dr, cc = c + dc;
+        while (isInside(cr, cc)) {
+          if (!isEmpty(cr, cc)) {
+            moves.push({ from: {r, c}, to: {r: cr, c: cc}, isShoot: true, targetPiece: board[cr][cc], piece });
+            break;
+          }
+          cr += dr; cc += dc;
         }
       }
     }
@@ -282,6 +329,35 @@ export function getPseudoLegalMovesForPiece(state, r, c, piece, abilities) {
            else if (canCapture(nr2, nc2)) addMove(nr2, nc2, true);
          }
        }
+    }
+
+    if (abilities.includes('king_leapingPawn')) {
+       if (isInside(r + 2*dir, c) && !isEmpty(r + dir, c) && isEmpty(r + 2*dir, c)) {
+         addMove(r + 2*dir, c, false);
+       }
+    }
+
+    if (abilities.includes('king_swapKnight')) {
+      for (let rr=0; rr<8; rr++) {
+        for (let cc=0; cc<8; cc++) {
+          if (board[rr][cc] && board[rr][cc].color === piece.color && (rr!==r || cc!==c)) {
+            moves.push({ from: {r, c}, to: {r: rr, c: cc}, isSwap: true, piece });
+          }
+        }
+      }
+    }
+
+    if (abilities.includes('king_modernKnight')) {
+      for (const [dr, dc] of slideDirs['r']) {
+        let cr = r + dr, cc = c + dc;
+        while (isInside(cr, cc)) {
+          if (!isEmpty(cr, cc)) {
+            moves.push({ from: {r, c}, to: {r: cr, c: cc}, isShoot: true, targetPiece: board[cr][cc], piece });
+            break;
+          }
+          cr += dr; cc += dc;
+        }
+      }
     }
 
     if (abilities.includes('king_crabPawn') || abilities.includes('king_retreatingPawn')) {
