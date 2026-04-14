@@ -115,10 +115,28 @@ export default function Board({ state, onMove, playerColor, captureEffect = 'non
                       fill={piece.color === 'w' ? '#f8fafc' : '#0f172a'}
                       stroke={piece.color === 'w' ? '#00000080' : '#ffffff60'}
                       strokeWidth="2"
+                      style={{ filter: piece.stunTimer > 0 ? 'grayscale(1) opacity(0.6)' : 'none' }}
                     >
                       {PIECE_EMOJIS[piece.color][piece.type]}
                     </text>
+                    {piece.stunTimer > 0 && (
+                      <text x="50%" y="45%" textAnchor="middle" fontSize="40" fill="#fbbf24" style={{filter:'drop-shadow(0 0 5px #000)'}}>⚡</text>
+                    )}
+                    {piece.shotCount > 0 && (
+                      <g transform="translate(25, 82)">
+                        {[...Array(piece.shotCount)].map((_, i) => (
+                          <circle key={i} cx={i * 12} cy="0" r="4" fill="#ef4444" stroke="#000" strokeWidth="1" />
+                        ))}
+                      </g>
+                    )}
                   </svg>
+                )}
+                {isLegalMove && legalMoves.find(m => m.to.r === r && m.to.c === c)?.isShoot && (
+                   <div style={{ position: 'absolute', inset: '10%' }} className="z-10 flex items-center justify-center">
+                     <div className="absolute w-full h-1 bg-orange-500/80"/>
+                     <div className="absolute w-1 h-full bg-orange-500/80"/>
+                     <div className="absolute w-full h-full border-4 border-orange-500/80 rounded-full"/>
+                   </div>
                 )}
               </div>
             );

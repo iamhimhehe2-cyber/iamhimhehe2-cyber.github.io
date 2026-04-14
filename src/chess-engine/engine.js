@@ -14,12 +14,12 @@ export const ALL_ABILITIES = [
   { id: 'diagonalRook', name: 'Diagonal Rook', desc: 'Rooks can also move 1 square diagonally.' },
   { id: 'straightBishop', name: 'Straight Bishop', desc: 'Bishops can also move 1 square straight.' },
   { id: 'stoutKing', name: 'Stout King', desc: 'The King can capture friendly pieces to escape check.' },
-  { id: 'amazonQueen', name: 'Amazon Queen', desc: 'Queen gains Knight movement abilities.' },
-  { id: 'assassinPawn', name: 'Assassin Pawn', desc: 'Pawns can capture pieces straight ahead.' },
-  { id: 'swapKnight', name: 'Swap Knight', desc: 'Knights can swap places with friendly pieces.' },
-  { id: 'fortressRook', name: 'Fortress Rook', desc: 'Rooks cannot be captured by Knights or Bishops.' },
+  { id: 'amazonQueen', name: 'Amazon Queen', desc: 'Queen gains Knight movement (Amazon Piece).' },
+  { id: 'assassinPawn', name: 'Assassin Pawn', desc: 'Pawns can capture pieces directly in front of them.' },
+  { id: 'swapKnight', name: 'Swap Knight', desc: 'Knights can swap places with non-king friendly pieces.' },
+  { id: 'fortressRook', name: 'Fortress Rook', desc: 'Rooks are immune to capture by Knights or Bishops.' },
   { id: 'leapingPawn', name: 'Leaping Pawn', desc: 'Pawns can jump exactly one piece directly in front of them.' },
-  { id: 'modernKnight', name: 'Modern Knight', desc: 'Knight shoots orthogonally to stun a piece for 1 turn. 5 hits kills.' },
+  { id: 'modernKnight', name: 'Modern Knight', desc: 'Knight shoots in 8 directions to stun for 1 turn. 5 hits kills.' },
   
   // King Rule Awakened Cards
   { id: 'king_ghostRook', name: 'Awakened: Ghost King', desc: 'King acts as a Ghost Rook (infinite reach).' },
@@ -32,12 +32,12 @@ export const ALL_ABILITIES = [
   { id: 'king_diagonalRook', name: 'Awakened: Diagonal King', desc: 'King extends diagonal reach to 2 squares.' },
   { id: 'king_straightBishop', name: 'Awakened: Straight King', desc: 'King extends straight reach to 2 squares.' },
   { id: 'king_stoutKing', name: 'Awakened: True Stout', desc: 'Retains King sacrifice powers.' },
-  { id: 'king_amazonQueen', name: 'Awakened: Amazon King', desc: 'King gains Knight jump.' },
+  { id: 'king_amazonQueen', name: 'Awakened: Amazon King', desc: 'King gain Knight jump.' },
   { id: 'king_assassinPawn', name: 'Awakened: Assassin King', desc: 'King can capture without moving directly forward.' },
   { id: 'king_swapKnight', name: 'Awakened: Swap King', desc: 'King can swap places with any friendly piece.' },
   { id: 'king_fortressRook', name: 'Awakened: Fortress King', desc: 'King cannot be targeted by Knights or Bishops.' },
   { id: 'king_leapingPawn', name: 'Awakened: Leaping King', desc: 'King can leap over 1 piece.' },
-  { id: 'king_modernKnight', name: 'Awakened: Gun King', desc: 'King can shoot orthogonally.' }
+  { id: 'king_modernKnight', name: 'Awakened: Gun King', desc: 'King can shoot in 8 directions.' }
 ];
 
 export function createInitialState() {
@@ -199,7 +199,8 @@ export function getPseudoLegalMovesForPiece(state, r, c, piece, abilities) {
       }
     }
     if (abilities.includes('modernKnight')) {
-      for (const [dr, dc] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+      const shootDirs = [[-1, -1], [-1, 1], [1, -1], [1, 1], [-1, 0], [1, 0], [0, -1], [0, 1]];
+      for (const [dr, dc] of shootDirs) {
         let cr = r + dr, cc = c + dc;
         while (isInside(cr, cc)) {
           if (!isEmpty(cr, cc)) {
@@ -251,6 +252,18 @@ export function getPseudoLegalMovesForPiece(state, r, c, piece, abilities) {
     }
     if (piece.type === 'b' && abilities.includes('straightBishop')) {
       for (const [dr, dc] of slideDirs['r']) {
+        const nr = r + dr, nc = c + dc;
+        if (isInside(nr, nc)) {
+          if (isEmpty(nr, nc)) addMove(nr, nc, false);
+          else if (canCapture(nr, nc)) addMove(nr, nc, true);
+        }
+      }
+    }
+
+    // Amazon Queen Knight Moves
+    if (piece.type === 'q' && (abilities.includes('amazonQueen') || abilities.includes('king_amazonQueen'))) {
+      const qKnightDirs = [[-2, -1], [-2, 1], [-1, -2], [-1, 2], [1, -2], [1, 2], [2, -1], [2, 1]];
+      for (const [dr, dc] of qKnightDirs) {
         const nr = r + dr, nc = c + dc;
         if (isInside(nr, nc)) {
           if (isEmpty(nr, nc)) addMove(nr, nc, false);
@@ -348,7 +361,8 @@ export function getPseudoLegalMovesForPiece(state, r, c, piece, abilities) {
     }
 
     if (abilities.includes('king_modernKnight')) {
-      for (const [dr, dc] of slideDirs['r']) {
+      const shootDirs = [[-1, -1], [-1, 1], [1, -1], [1, 1], [-1, 0], [1, 0], [0, -1], [0, 1]];
+      for (const [dr, dc] of shootDirs) {
         let cr = r + dr, cc = c + dc;
         while (isInside(cr, cc)) {
           if (!isEmpty(cr, cc)) {
@@ -368,6 +382,17 @@ export function getPseudoLegalMovesForPiece(state, r, c, piece, abilities) {
            else if (canCapture(nr3, nc3)) addMove(nr3, nc3, true);
          }
        }
+    }
+
+    if (abilities.includes('king_amazonQueen')) {
+      const qKnightDirs = [[-2, -1], [-2, 1], [-1, -2], [-1, 2], [1, -2], [1, 2], [2, -1], [2, 1]];
+      for (const [dr, dc] of qKnightDirs) {
+        const nr = r + dr, nc = c + dc;
+        if (isInside(nr, nc)) {
+          if (isEmpty(nr, nc)) addMove(nr, nc, false);
+          else if (canCapture(nr, nc)) addMove(nr, nc, true);
+        }
+      }
     }
   }
 
@@ -421,44 +446,79 @@ export function executeMove(state, move) {
   const nextState = { ...state };
   nextState.board = copyBoard(state.board);
   const color = state.turn;
+  const board = nextState.board;
 
-  const targetPiece = nextState.board[move.to.r][move.to.c];
-  
-  // if capture, add points
-  if (targetPiece && targetPiece.color !== color) {
-    const pts = PIECE_VALUES[targetPiece.type] || 0;
-    nextState.points[color] += pts;
-    nextState.captured[color] = [...nextState.captured[color], targetPiece.type];
-    
-    // Check 5 pieces left logic
-    let enemyPieces = 0;
-    for (let r=0; r<8; r++) {
-      for (let c=0; c<8; c++) {
-        const p = nextState.board[r][c];
-        if (p && p.color !== color && (r !== move.to.r || c !== move.to.c)) {
-          enemyPieces++;
+  // Modern Knight / Shoot Logic
+  if (move.isShoot) {
+    const target = board[move.to.r][move.to.c];
+    if (target) {
+      target.shotCount = (target.shotCount || 0) + 1;
+      target.stunTimer = 1;
+      
+      // If 5 shots, piece is destroyed
+      if (target.shotCount >= 5) {
+        const pts = PIECE_VALUES[target.type] || 0;
+        if (target.color !== color) {
+          nextState.points[color] += pts;
+          nextState.captured[color] = [...nextState.captured[color], target.type];
         }
+        board[move.to.r][move.to.c] = null;
       }
     }
-
-    if (enemyPieces === 5 && !nextState.fivePieceRuleTriggered[color]) {
-      nextState.fivePieceRuleTriggered[color] = true;
-      const opponent = color === 'w' ? 'b' : 'w';
-      const toCopy = nextState.cards[color] || [];
-      const kingCards = toCopy.map(c => `king_${c}`);
-      const currentOpp = nextState.cards[opponent] || [];
-      nextState.cards[opponent] = Array.from(new Set([...currentOpp, ...kingCards]));
+    // Execution ends here for shoot — piece does not move
+  } else if (move.isSwap) {
+    const fromPiece = board[move.from.r][move.from.c];
+    const toPiece = board[move.to.r][move.to.c];
+    board[move.to.r][move.to.c] = fromPiece;
+    board[move.from.r][move.from.c] = toPiece;
+  } else {
+    // Standard Move
+    const targetPiece = board[move.to.r][move.to.c];
+    
+    // if capture, add points
+    if (targetPiece && targetPiece.color !== color) {
+      const pts = PIECE_VALUES[targetPiece.type] || 0;
+      nextState.points[color] += pts;
+      nextState.captured[color] = [...nextState.captured[color], targetPiece.type];
+    }
+    
+    // move piece
+    const piece = board[move.from.r][move.from.c];
+    board[move.to.r][move.to.c] = piece;
+    board[move.from.r][move.from.c] = null;
+    
+    // pawn promotion
+    if (piece.type === 'p' && (move.to.r === 0 || move.to.r === 7)) {
+      board[move.to.r][move.to.c] = { type: 'q', color };
     }
   }
 
-  // move piece
-  const piece = nextState.board[move.from.r][move.from.c];
-  nextState.board[move.to.r][move.to.c] = piece;
-  nextState.board[move.from.r][move.from.c] = null;
-  
-  // pawn promotion (always queen for simplicity for now to avoid UI blocking)
-  if (piece.type === 'p' && (move.to.r === 0 || move.to.r === 7)) {
-    nextState.board[move.to.r][move.to.c] = { type: 'q', color };
+  // 1. Check 5 pieces left logic
+  let enemyPieces = 0;
+  for (let r=0; r<8; r++) {
+    for (let c=0; c<8; c++) {
+      const p = board[r][c];
+      if (p && p.color !== color) enemyPieces++;
+    }
+  }
+
+  if (enemyPieces === 5 && !nextState.fivePieceRuleTriggered[color]) {
+    nextState.fivePieceRuleTriggered[color] = true;
+    const opponent = color === 'w' ? 'b' : 'w';
+    const toCopy = nextState.cards[color] || [];
+    const kingCards = toCopy.map(c => `king_${c}`);
+    const currentOpp = nextState.cards[opponent] || [];
+    nextState.cards[opponent] = Array.from(new Set([...currentOpp, ...kingCards]));
+  }
+
+  // 2. Decat stun timers for the player who just FINISHED their turn
+  for (let r=0; r<8; r++) {
+    for (let c=0; c<8; c++) {
+      const p = board[r][c];
+      if (p && p.color === color && p.stunTimer > 0) {
+        p.stunTimer--;
+      }
+    }
   }
 
   nextState.turn = color === 'w' ? 'b' : 'w';
@@ -466,9 +526,7 @@ export function executeMove(state, move) {
   // Check for win/loss/check
   const nextLegalMoves = getLegalMoves(nextState);
   if (nextLegalMoves.length === 0) {
-    // check if in check
-    // we just use getLegalMoves logic slightly modified to detect check
-    nextState.winner = color; // if no legal moves, active player wins (simplifying stalemate as win)
+    nextState.winner = color; // simplifies stalemate as win
   }
 
   return nextState;

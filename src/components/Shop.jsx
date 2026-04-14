@@ -70,8 +70,8 @@ export default function Shop({ profile, onProfileChange, onBack }) {
         <button onClick={onBack} style={{background:'rgba(255,255,255,0.07)',border:'1px solid rgba(255,255,255,0.12)',color:'#94a3b8',padding:'8px 16px',borderRadius:8,cursor:'pointer',fontWeight:'bold'}}>
           ← Back
         </button>
-        <h1 style={{margin:0,fontSize:26,fontWeight:900,background:'linear-gradient(135deg,#fbbf24,#f97316)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent'}}>
-          🛒 Shop
+        <h1 style={{margin:0,fontSize:28,fontWeight:900,fontFamily:'Outfit, sans-serif',background:'linear-gradient(135deg,#fbbf24,#f97316)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent'}}>
+          The Bazaar
         </h1>
         <div style={{marginLeft:'auto',display:'flex',alignItems:'center',gap:8,padding:'8px 16px',background:'rgba(250,204,21,0.1)',border:'1px solid rgba(250,204,21,0.25)',borderRadius:20,color:'#fbbf24',fontWeight:'bold',fontSize:16}}>
           🪙 {profile.coins.toLocaleString()}
@@ -167,9 +167,11 @@ export default function Shop({ profile, onProfileChange, onBack }) {
                 const owned = profile.ownedItems.includes(item.id);
                 return (
                   <div key={item.id} style={{
-                    background:'rgba(255,255,255,0.04)',border:`1px solid ${owned?'rgba(16,185,129,0.4)':'rgba(255,255,255,0.08)'}`,
-                    borderRadius:14,padding:20,transition:'all 0.2s',
-                    boxShadow: owned?'0 0 20px rgba(16,185,129,0.1)':'none'
+                    background:'rgba(255,255,255,0.03)',
+                    border:`1px solid ${owned?'rgba(16,185,129,0.3)':'rgba(255,255,255,0.06)'}`,
+                    borderRadius:16,padding:24,transition:'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                    boxShadow: owned?'0 0 30px rgba(16,185,129,0.05)':'none',
+                    display:'flex', flexDirection:'column', height:'100%'
                   }}>
                     <div style={{fontSize:36,marginBottom:8}}>{item.icon}</div>
                     <div style={{fontWeight:'bold',fontSize:16,marginBottom:4}}>{item.name}</div>

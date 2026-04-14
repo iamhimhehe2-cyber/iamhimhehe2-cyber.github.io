@@ -157,7 +157,9 @@ export default function Learning({ onBack }) {
           onMouseOver={e=>e.currentTarget.style.color='#fff'} onMouseOut={e=>e.currentTarget.style.color='#94a3b8'}>
           ← Back
         </button>
-        <h1 style={{fontSize:28,fontWeight:900,background:'linear-gradient(135deg,#f59e0b,#f97316)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent',margin:0}}>📚 Chess Academy</h1>
+        <h1 style={{fontSize:28,fontWeight:900,fontFamily:'Outfit, sans-serif',background:'linear-gradient(135deg,#f59e0b,#f97316)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent',margin:0}}>
+          Tactical Academy
+        </h1>
         {/* Category Toggle */}
         <div style={{marginLeft:'auto',display:'flex',gap:4,background:'rgba(255,255,255,0.05)',borderRadius:10,padding:4}}>
           {['openings','endings'].map(cat=>(

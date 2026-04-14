@@ -62,10 +62,12 @@ export default function AFKZone({ profile, onProfileChange, onBack }) {
       }} />
 
       <div style={{ zIndex: 10, textAlign: 'center', maxWidth: 600, width: '100%' }}>
-        <h1 style={{ fontSize: 42, fontWeight: 900, marginBottom: 10, color: '#818cf8' }}>💤 AFK Zone</h1>
-        <p style={{ color: '#94a3b8', fontSize: 16, marginBottom: 40 }}>
-          Leave this screen open to generate passive Experience. <br />
-          Reward multiplies by x1.5 every minute!
+        <h1 style={{ fontSize: 52, fontWeight: 900, fontFamily: 'Outfit, sans-serif', marginBottom: 12, background: 'linear-gradient(135deg, #818cf8, #6366f1)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', filter: 'drop-shadow(0 0 20px rgba(99,102,241,0.3))' }}>
+          Resting Grounds
+        </h1>
+        <p style={{ color: '#64748b', fontSize: 15, marginBottom: 40, letterSpacing: 0.5, lineHeight: 1.6 }}>
+          Channel passive energy while you rest. <br />
+          Experience essence gathers x1.5 faster every passing minute.
         </p>
 
         {/* Ad Container */}
@@ -76,11 +78,9 @@ export default function AFKZone({ profile, onProfileChange, onBack }) {
         }}>
           {/* AdSense Unit */}
           <ins className="adsbygoogle"
-            style={{ display: 'block', width: '100%', minWidth: '300px', height: '250px' }}
+            style={{ display: 'inline-block', width: '350px', height: '250px' }}
             data-ad-client="ca-pub-9992695561469755"
-            data-ad-slot="auto"
-            data-ad-format="auto"
-            data-full-width-responsive="true"></ins>
+            data-ad-slot="1703123193"></ins>
         </div>
 
         <div style={{

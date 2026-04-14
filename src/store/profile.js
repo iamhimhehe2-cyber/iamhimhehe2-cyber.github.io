@@ -1,7 +1,8 @@
 // Profile store — persisted to localStorage
 const STORAGE_KEY = 'chess_ascended_profile';
 
-const XP_THRESHOLDS = [0, 200, 500, 1000, 2000, 3500, 5500, 8000, 11000, 15000];
+// XP = (level - 1)^2 * 185
+const XP_COEFF = 185;
 
 export const LEVEL_EFFECTS = [
   { level: 1, id: 'none',      name: 'None',       icon: '⬜', color: '#94a3b8' },
@@ -30,7 +31,17 @@ export const XP_REWARDS = {
 };
 
 function defaultProfile() {
-  return { xp: 0, level: 1, coins: 100, activeEffect: 'none', ownedItems: [] };
+  return { 
+    xp: 0, 
+    level: 1, 
+    coins: 100, 
+    activeEffect: 'none', 
+    ownedItems: [],
+    username: 'Grandmaster',
+    wins: 0,
+    totalGames: 0,
+    winStreak: 0
+  };
 }
 
 export function loadProfile() {
@@ -45,20 +56,52 @@ export function saveProfile(profile) {
 }
 
 export function getLevelFromXP(xp) {
-  let level = 1;
-  for (let i = 1; i < XP_THRESHOLDS.length; i++) {
-    if (xp >= XP_THRESHOLDS[i]) level = i + 1;
-    else break;
-  }
-  return Math.min(level, XP_THRESHOLDS.length);
+  // Solve: xp = (level - 1)^2 * XP_COEFF -> level = sqrt(xp / XP_COEFF) + 1
+  const level = Math.floor(Math.sqrt(xp / XP_COEFF)) + 1;
+  return Math.max(1, level);
 }
 
 export function getXPForLevel(level) {
-  return XP_THRESHOLDS[Math.min(level - 1, XP_THRESHOLDS.length - 1)] || 0;
+  if (level <= 1) return 0;
+  return Math.pow(level - 1, 2) * XP_COEFF;
 }
 
 export function getXPForNextLevel(level) {
-  return XP_THRESHOLDS[Math.min(level, XP_THRESHOLDS.length - 1)] || XP_THRESHOLDS[XP_THRESHOLDS.length - 1];
+  return Math.pow(level, 2) * XP_COEFF;
+}
+
+export function getTitle(level) {
+  if (level >= 1000) return 'TOUCH GRASS';
+  if (level >= 500)  return 'SYSTEM ERROR';
+  if (level >= 250)  return 'GODLIKE';
+  if (level >= 150)  return 'ETHEREAL';
+  if (level >= 100)  return 'EYE OF THE STORM';
+  if (level >= 80)   return 'ASCENDED';
+  if (level >= 65)   return 'TRANSCENDENT';
+  if (level >= 50)   return 'GRANDMASTER';
+  if (level >= 40)   return 'ZENITH';
+  if (level >= 30)   return 'MASTER';
+  if (level >= 20)   return 'ADEPT';
+  if (level >= 15)   return 'DISCIPLE';
+  if (level >= 10)   return 'ELITE';
+  if (level >= 5)    return 'PRODIGY';
+  return 'NOVICE';
+}
+
+export function getTitleColor(level) {
+  if (level >= 100) return 'linear-gradient(90deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #8b00ff)'; // Rainbow
+  if (level >= 80)  return 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 50%, #d97706 100%)'; // Golden
+  if (level >= 65)  return 'linear-gradient(135deg, #a855f7 0%, #8b5cf6 100%)'; // Purple Glow
+  if (level >= 50)  return 'linear-gradient(135deg, #38bdf8 0%, #6366f1 100%)'; // Deep Blue
+  if (level >= 30)  return '#f472b6'; // Pink
+  if (level >= 15)  return '#fb7185'; // Rose
+  const hue = (Math.floor(level / 5) * 60) % 360;
+  return `hsl(${hue}, 80%, 65%)`;
+}
+
+export function getWinRate(profile) {
+  if (!profile.totalGames) return 0;
+  return Math.round((profile.wins / profile.totalGames) * 100);
 }
 
 export function getUnlockedEffects(level) {
@@ -66,13 +109,23 @@ export function getUnlockedEffects(level) {
 }
 
 // Returns { profile, leveled, newLevel, prevLevel }
-export function awardXP(profile, xpAmount, coinAmount = 0) {
+export function awardXP(profile, xpAmount, coinAmount = 0, didWin = true) {
   const prevLevel = profile.level;
   const newXP = profile.xp + xpAmount;
   const newCoins = profile.coins + coinAmount;
   const newLevel = getLevelFromXP(newXP);
   const leveled = newLevel > prevLevel;
-  const updated = { ...profile, xp: newXP, coins: newCoins, level: newLevel };
+
+  const updated = { 
+    ...profile, 
+    xp: newXP, 
+    coins: newCoins, 
+    level: newLevel,
+    wins: profile.wins + (didWin ? 1 : 0),
+    totalGames: profile.totalGames + 1,
+    winStreak: didWin ? (profile.winStreak + 1) : 0
+  };
+
   saveProfile(updated);
   return { profile: updated, leveled, newLevel, prevLevel };
 }
@@ -100,3 +153,10 @@ export function setActiveEffect(profile, effectId) {
   saveProfile(updated);
   return updated;
 }
+
+export function setUsername(profile, name) {
+  const updated = { ...profile, username: name.substring(0, 16) };
+  saveProfile(updated);
+  return updated;
+}
+

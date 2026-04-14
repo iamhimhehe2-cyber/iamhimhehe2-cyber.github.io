@@ -10,7 +10,7 @@ import LevelUpModal from './components/LevelUpModal';
 import AFKZone from './components/AFKZone';
 import { createInitialState, executeMove, drawCard } from './chess-engine/engine';
 import { getAIMove } from './chess-engine/ai';
-import { loadProfile, saveProfile, awardXP, XP_REWARDS } from './store/profile';
+import { loadProfile, saveProfile, awardXP, XP_REWARDS, setUsername, getTitle, getTitleColor, getWinRate } from './store/profile';
 
 // ── Quick Match slot helpers ──────────────────────────────────────────────────
 const QM_TOTAL = 10; // Low amount to ensure players actually match
@@ -34,6 +34,7 @@ export default function App() {
   const [quickMatchStatus, setQuickMatchStatus] = useState('idle'); // 'idle'|'searching'|'found'|'failed'
   const [quickMatchMsg, setQuickMatchMsg] = useState('');
   const [networkErrorMsg, setNetworkErrorMsg] = useState('');
+  const [opponentProfile, setOpponentProfile] = useState(null);
   const peerRef = useRef(null);
   const connRef = useRef(null);
 
@@ -54,12 +55,16 @@ export default function App() {
                         gameMode === 'quick'|| gameMode === 'online' ? 'quick' : 'pvp';
       const rewards = XP_REWARDS[rewardKey] || { win: 40, coins: 15 };
 
-      const { profile: updated, leveled, newLevel } = awardXP(profile, rewards.win, rewards.coins);
+      const { profile: updated, leveled, newLevel } = awardXP(profile, rewards.win, rewards.coins, isMyWin);
       setProfile(updated);
       setXpNotif({ xp: rewards.win, coins: rewards.coins });
       setTimeout(() => setXpNotif(null), 3000);
       if (leveled) {
         setTimeout(() => setLevelUpData({ newLevel, coinsEarned: rewards.coins }), 800);
+      }
+      // Send final state to opponent if online
+      if (connRef.current) {
+        connRef.current.send(gameState);
       }
     }
   }, [gameState.winner, gameMode, playerColor, xpAwarded, profile]);
@@ -105,8 +110,27 @@ export default function App() {
       connRef.current = conn;
       setConnectionStatus('connected');
       setGameMode('online'); setPlayerColor('w');
-      conn.on('data', data => setGameState(data));
-      conn.on('open', () => conn.send(createInitialState()));
+      conn.on('data', data => {
+        if (data?.type === 'IDENTITY') {
+          setOpponentProfile(data.profile);
+        } else {
+          setGameState(data);
+        }
+      });
+      conn.on('open', () => {
+        conn.send({ 
+          type: 'IDENTITY', 
+          profile: {
+            username: profile.username,
+            level: profile.level,
+            wins: profile.wins,
+            totalGames: profile.totalGames,
+            winStreak: profile.winStreak,
+            activeEffect: profile.activeEffect
+          }
+        });
+        conn.send(createInitialState());
+      });
       conn.on('error', () => { setConnectionStatus('disconnected'); setNetworkErrorMsg('Player disconnected.'); });
       navigate('/play');
     });
@@ -134,9 +158,26 @@ export default function App() {
         setConnectionStatus('connected'); 
         setGameMode('online'); 
         setPlayerColor('b'); 
+        conn.send({ 
+          type: 'IDENTITY', 
+          profile: {
+            username: profile.username,
+            level: profile.level,
+            wins: profile.wins,
+            totalGames: profile.totalGames,
+            winStreak: profile.winStreak,
+            activeEffect: profile.activeEffect
+          }
+        });
         navigate('/play');
       });
-      conn.on('data', data => setGameState(data));
+      conn.on('data', data => {
+        if (data?.type === 'IDENTITY') {
+          setOpponentProfile(data.profile);
+        } else {
+          setGameState(data);
+        }
+      });
       conn.on('error', () => { 
         setNetworkErrorMsg('Disconnected from host.'); 
         setConnectionStatus('disconnected'); 
@@ -185,8 +226,25 @@ export default function App() {
           setConnectionStatus('connected');
           setGameMode('quick'); setPlayerColor('w');
           setQuickMatchStatus('found');
-          conn.on('data', data => setGameState(data));
+          conn.on('data', data => {
+            if (data?.type === 'IDENTITY') {
+              setOpponentProfile(data.profile);
+            } else {
+              setGameState(data);
+            }
+          });
           conn.on('open', () => {
+            conn.send({ 
+          type: 'IDENTITY', 
+          profile: {
+            username: profile.username,
+            level: profile.level,
+            wins: profile.wins,
+            totalGames: profile.totalGames,
+            winStreak: profile.winStreak,
+            activeEffect: profile.activeEffect
+          }
+        });
             conn.send(createInitialState());
           });
           navigate('/play');
@@ -217,8 +275,15 @@ export default function App() {
         setConnectionStatus('connected');
         setGameMode('quick'); setPlayerColor('b');
         setQuickMatchStatus('found');
-        conn.on('data', data => setGameState(data));
+        conn.send({ type: 'IDENTITY', profile: profile });
         navigate('/play');
+      });
+      conn.on('data', data => {
+        if (data?.type === 'IDENTITY') {
+          setOpponentProfile(data.profile);
+        } else {
+          setGameState(data);
+        }
       });
     };
 
@@ -257,6 +322,7 @@ export default function App() {
     setQuickMatchStatus('idle');
     setXpAwarded(false);
     setNetworkErrorMsg('');
+    setOpponentProfile(null);
     navigate('/');
   };
 
@@ -352,6 +418,94 @@ export default function App() {
                   Chess: Ascended
                 </h1>
                 <p style={{textAlign:'center',color:'#64748b',fontSize:13,margin:'0 0 28px',position:'relative'}}>Draw cards, bend the rules, dominate the board.</p>
+
+                {/* Player Profile & Stats Card */}
+                <div style={{
+                  background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.06)',
+                  borderRadius:16, padding:20, marginBottom:24, boxShadow:'inset 0 0 20px rgba(0,0,0,0.2)',
+                  position:'relative', overflow:'hidden'
+                }}>
+                  <div style={{display:'flex', gap:16, alignItems:'center', position:'relative', zIndex:1}}>
+                    {/* Rank Badge */}
+                    <div style={{
+                      width:64, height:64, borderRadius:16, flexShrink:0,
+                      background: profile.level >= 50 ? 'linear-gradient(135deg, #fbbf24, #f59e0b)' : 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                      display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
+                      boxShadow: profile.level >= 50 ? '0 0 30px rgba(245,158,11,0.3)' : '0 0 20px rgba(99,102,241,0.2)',
+                      border:'1px solid rgba(255,255,255,0.2)', transform:'rotate(-3deg)'
+                    }}>
+                      <span style={{fontSize:10, fontWeight:900, color:'rgba(255,255,255,0.6)', textTransform:'uppercase', marginBottom:-4}}>Level</span>
+                      <span style={{fontSize:28, fontWeight:900, color:'#fff', lineHeight:1}}>{profile.level}</span>
+                    </div>
+
+                    <div style={{flex:1, minWidth:0}}>
+                      <p style={{fontSize:11, color:'#64748b', textTransform:'uppercase', letterSpacing:1.5, marginBottom:2, fontWeight:900}}>Current Status</p>
+                      <h3 style={{fontSize:22, fontWeight:900, color:'#f8fafc', margin:0, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{profile.username}</h3>
+                      <div style={{
+                        fontSize:11, fontWeight:900, textTransform:'uppercase', letterSpacing:2, marginTop:4,
+                        background: getTitleColor(profile.level), WebkitBackgroundClip: getTitleColor(profile.level).includes('gradient') ? 'text' : 'none',
+                        WebkitTextFillColor: getTitleColor(profile.level).includes('gradient') ? 'transparent' : getTitleColor(profile.level),
+                        color: getTitleColor(profile.level).includes('gradient') ? 'transparent' : getTitleColor(profile.level),
+                        filter: getTitleColor(profile.level).includes('gradient') ? 'drop-shadow(0 0 4px rgba(255,255,255,0.1))' : 'none'
+                      }}>
+                        {getTitle(profile.level)}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* XP Progress */}
+                  <div style={{marginTop:16}}>
+                    <div style={{display:'flex', justifyContent:'space-between', fontSize:10, color:'#94a3b8', fontWeight:'bold', marginBottom:6, textTransform:'uppercase', letterSpacing:1}}>
+                      <span>Progress to Next Rank</span>
+                      <span>{Math.floor(profile.xp - getXPForLevel(profile.level)).toLocaleString()} / {Math.floor(getXPForNextLevel(profile.level) - getXPForLevel(profile.level)).toLocaleString()} XP</span>
+                    </div>
+                    <div style={{height:8, background:'rgba(0,0,0,0.3)', borderRadius:4, overflow:'hidden', border:'1px solid rgba(255,255,255,0.05)'}}>
+                      <div style={{
+                        height:'100%', width:`${Math.min(100, Math.round(((profile.xp - getXPForLevel(profile.level)) / (getXPForNextLevel(profile.level) - getXPForLevel(profile.level))) * 100))}%`,
+                        background: profile.level >= 80 ? 'linear-gradient(90deg, #fbbf24, #f59e0b, #fbbf24)' : 'linear-gradient(90deg, #6366f1, #a855f7)',
+                        borderRadius:4, transition:'width 1.5s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                        boxShadow: '0 0 10px rgba(99,102,241,0.3)'
+                      }}/>
+                    </div>
+                  </div>
+
+                  {/* Combat Stats Grid */}
+                  <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:10, marginTop:16}}>
+                    <div style={{background:'rgba(0,0,0,0.2)', padding:'10px 8px', borderRadius:10, textAlign:'center', border:'1px solid rgba(255,255,255,0.03)'}}>
+                      <p style={{fontSize:9, color:'#64748b', textTransform:'uppercase', marginBottom:2, fontWeight:900}}>Win Rate</p>
+                      <p style={{fontSize:16, fontWeight:900, color:'#10b981', margin:0}}>{getWinRate(profile)}%</p>
+                    </div>
+                    <div style={{background:'rgba(0,0,0,0.2)', padding:'10px 8px', borderRadius:10, textAlign:'center', border:'1px solid rgba(255,255,255,0.03)'}}>
+                      <p style={{fontSize:9, color:'#64748b', textTransform:'uppercase', marginBottom:2, fontWeight:900}}>Hot Streak</p>
+                      <p style={{fontSize:16, fontWeight:900, color:'#f59e0b', margin:0}}>{profile.winStreak}🔥</p>
+                    </div>
+                    <div style={{background:'rgba(0,0,0,0.2)', padding:'10px 8px', borderRadius:10, textAlign:'center', border:'1px solid rgba(255,255,255,0.03)'}}>
+                      <p style={{fontSize:9, color:'#64748b', textTransform:'uppercase', marginBottom:2, fontWeight:900}}>Total Wins</p>
+                      <p style={{fontSize:16, fontWeight:900, color:'#818cf8', margin:0}}>{profile.wins}</p>
+                    </div>
+                  </div>
+
+                  {/* Background Decoration */}
+                  <div style={{position:'absolute', right:-20, bottom:-20, fontSize:100, opacity:0.04, pointerEvents:'none', transform:'rotate(-15deg)'}}>🛡️</div>
+                </div>
+
+                {/* Name Entry */}
+                <div style={{marginBottom:24, background:'rgba(255,255,255,0.03)', padding:16, borderRadius:12, border:'1px solid rgba(255,255,255,0.05)'}}>
+                  <p style={{fontSize:11, color:'#64748b', textTransform:'uppercase', letterSpacing:1, marginBottom:8}}>Update Nickname</p>
+                  <input 
+                    type="text" 
+                    value={profile.username} 
+                    onChange={e => {
+                      const updated = setUsername(profile, e.target.value);
+                      setProfile(updated);
+                    }}
+                    placeholder="Enter name..."
+                    style={{
+                      width:'100%', background:'rgba(0,0,0,0.2)', border:'1px solid rgba(255,255,255,0.1)',
+                      padding:'10px 14px', borderRadius:8, color:'#fff', outline:'none', fontSize:14
+                    }}
+                  />
+                </div>
 
                 {networkErrorMsg && (
                   <div style={{background:'rgba(239,68,68,0.15)',border:'1px solid rgba(239,68,68,0.4)',color:'#fca5a5',padding:'12px',borderRadius:8,marginBottom:20,fontSize:13,textAlign:'center',fontWeight:'bold'}}>
@@ -518,8 +672,20 @@ export default function App() {
               <Board state={gameState} onMove={handleMove} playerColor={gameMode==='pvp'?null:playerColor} captureEffect={profile.activeEffect || 'none'}/>
             </div>
             <div style={{display:'flex',flexDirection:'column',gap:16,width:300,flexShrink:0}}>
-              <Dashboard color={oppColor} state={gameState} onDrawCard={gameMode==='pvp'?handleDrawCardOpponent:null} isPlayer={gameMode==='pvp'}/>
-              <Dashboard color={playerColor} state={gameState} onDrawCard={handleDrawCard} isPlayer={true}/>
+              <Dashboard 
+                color={oppColor} 
+                state={gameState} 
+                onDrawCard={gameMode==='pvp'?handleDrawCardOpponent:null} 
+                isPlayer={gameMode==='pvp'}
+                playerInfo={opponentProfile || (gameMode==='pvp' ? { username: 'Black', level: profile.level } : null)}
+              />
+              <Dashboard 
+                color={playerColor} 
+                state={gameState} 
+                onDrawCard={handleDrawCard} 
+                isPlayer={true}
+                playerInfo={profile}
+              />
             </div>
           </div>
           <style>{`
