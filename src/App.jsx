@@ -10,7 +10,7 @@ import LevelUpModal from './components/LevelUpModal';
 import AFKZone from './components/AFKZone';
 import { createInitialState, executeMove, drawCard } from './chess-engine/engine';
 import { getAIMove } from './chess-engine/ai';
-import { loadProfile, saveProfile, awardXP, XP_REWARDS, setUsername, getTitle, getTitleColor, getWinRate } from './store/profile';
+import { loadProfile, saveProfile, awardXP, XP_REWARDS, setUsername, getTitle, getTitleColor, getWinRate, getXPForLevel, getXPForNextLevel } from './store/profile';
 
 // ── Quick Match slot helpers ──────────────────────────────────────────────────
 const QM_TOTAL = 10; // Low amount to ensure players actually match
@@ -37,6 +37,11 @@ export default function App() {
   const [opponentProfile, setOpponentProfile] = useState(null);
   const peerRef = useRef(null);
   const connRef = useRef(null);
+  
+  // Force update document title for verification
+  useEffect(() => {
+    document.title = `Chess: Ascended V0.0.2 | ${getTitle(profile.level)}`;
+  }, [profile.level]);
 
   // Award XP when the game ends
   useEffect(() => {
@@ -405,9 +410,13 @@ export default function App() {
             <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
           </div>
         ) : (!gameMode && connectionStatus !== 'connected') ? (
-          <div style={{minHeight:'100vh',background:'#0f172a',display:'flex',flexDirection:'column'}}>
+          <div style={{minHeight:'100vh',background:'#0f172a',display:'flex',flexDirection:'column',position:'relative',overflow:'hidden'}}>
+            {/* Premium Background Effects */}
+            <div style={{position:'absolute',top:0,left:0,right:0,bottom:0,background:'radial-gradient(circle at 20% 30%,rgba(99,102,241,0.08) 0%,transparent 50%),radial-gradient(circle at 80% 70%,rgba(245,158,11,0.05) 0%,transparent 50%)',pointerEvents:'none'}}/>
+            <div className="mesh-gradient" style={{position:'absolute',top:0,left:0,right:0,bottom:0,opacity:0.3,pointerEvents:'none'}}/>
+            
             <ProfileBar profile={profile}/>
-            <div style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',padding:16}}>
+            <div style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',padding:16,position:'relative',zIndex:1}}>
               <div style={{
                 background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.08)',
                 borderRadius:20,padding:32,maxWidth:440,width:'100%',
@@ -557,19 +566,19 @@ export default function App() {
                         padding:'12px',borderRadius:10,border:'1px solid rgba(245,158,11,0.3)',cursor:'pointer',
                         background:'rgba(245,158,11,0.08)',color:'#fbbf24',fontWeight:'bold',display:'flex',alignItems:'center',justifyContent:'center',gap:6
                       }}>
-                        📚 Academy
+                        🏛️ Academy
                       </button>
                       <button onClick={()=>navigate('/shop')} style={{
                         padding:'12px',borderRadius:10,border:'1px solid rgba(168,85,247,0.3)',cursor:'pointer',
                         background:'rgba(168,85,247,0.08)',color:'#c084fc',fontWeight:'bold',display:'flex',alignItems:'center',justifyContent:'center',gap:6
                       }}>
-                        🛒 Shop
+                        ⚖️ The Bazaar
                       </button>
                       <button onClick={()=>navigate('/afk')} style={{
                         padding:'12px',borderRadius:10,border:'1px solid rgba(99,102,241,0.3)',cursor:'pointer',
                         background:'rgba(99,102,241,0.08)',color:'#818cf8',fontWeight:'bold',display:'flex',alignItems:'center',justifyContent:'center',gap:6
                       }}>
-                        💤 AFK Zone
+                        🌙 Grounds
                       </button>
                     </div>
                   </div>

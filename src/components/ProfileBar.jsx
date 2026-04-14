@@ -40,7 +40,7 @@ export default function ProfileBar({ profile }) {
                 color: titleColor.includes('gradient') ? 'transparent' : titleColor,
                 whiteSpace: 'nowrap',
                 filter: titleColor.includes('gradient') ? 'drop-shadow(0 0 2px rgba(255,255,255,0.1))' : 'none'
-              }}>[{title}]</span>
+              }}>{title}</span>
             )}
           </div>
           <span style={{fontSize:10, color:'#94a3b8', fontVariantNumeric:'tabular-nums', fontWeight:'bold'}}>
@@ -58,13 +58,16 @@ export default function ProfileBar({ profile }) {
       </div>
 
       {/* Coins */}
-      <div style={{
-        display:'flex', alignItems:'center', gap:6, padding:'4px 12px',
-        background:'rgba(250,204,21,0.1)', border:'1px solid rgba(250,204,21,0.25)',
+      <div style={{display:'flex', alignItems:'center', gap:10}}>
+        <span style={{fontSize:9, fontWeight:900, color:'#475569', opacity:0.6}}>V0.0.2</span>
+        <div style={{
+          display:'flex', alignItems:'center', gap:6, padding:'4px 12px',
+          background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.08)',
         borderRadius:20, color:'#fbbf24', fontWeight:'bold', fontSize:14, flexShrink:0
       }}>
         🪙 {profile.coins.toLocaleString()}
       </div>
+    </div>
 
       {/* Active Effect */}
       {profile.activeEffect && profile.activeEffect !== 'none' && (

@@ -75,7 +75,9 @@ export function getTitle(level) {
   if (level >= 500)  return 'SYSTEM ERROR';
   if (level >= 250)  return 'GODLIKE';
   if (level >= 150)  return 'ETHEREAL';
+  if (level >= 125)  return 'WHATS GRASS';
   if (level >= 100)  return 'EYE OF THE STORM';
+  if (level >= 90)   return 'EAT SLEEP CHESS REPEAT';
   if (level >= 80)   return 'ASCENDED';
   if (level >= 65)   return 'TRANSCENDENT';
   if (level >= 50)   return 'GRANDMASTER';
@@ -85,18 +87,20 @@ export function getTitle(level) {
   if (level >= 15)   return 'DISCIPLE';
   if (level >= 10)   return 'ELITE';
   if (level >= 5)    return 'PRODIGY';
-  return 'NOVICE';
+  return 'MAX';
 }
 
 export function getTitleColor(level) {
-  if (level >= 100) return 'linear-gradient(90deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #8b00ff)'; // Rainbow
+  if (level >= 125) return 'linear-gradient(90deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #8b00ff)'; // Rainbow for WHATS GRASS
+  if (level >= 100) return 'linear-gradient(135deg, #f8fafc 0%, #94a3b8 100%)'; // Silver/Cloud
+  if (level >= 90)  return 'linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%)'; // Pink/Purple for EAT SLEEP...
   if (level >= 80)  return 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 50%, #d97706 100%)'; // Golden
-  if (level >= 65)  return 'linear-gradient(135deg, #a855f7 0%, #8b5cf6 100%)'; // Purple Glow
-  if (level >= 50)  return 'linear-gradient(135deg, #38bdf8 0%, #6366f1 100%)'; // Deep Blue
+  if (level >= 65)  return 'linear-gradient(135deg, #a855f7 0%, #8b5cf6 100%)'; // Purple
+  if (level >= 50)  return 'linear-gradient(135deg, #38bdf8 0%, #6366f1 100%)'; // Blue
   if (level >= 30)  return '#f472b6'; // Pink
   if (level >= 15)  return '#fb7185'; // Rose
-  const hue = (Math.floor(level / 5) * 60) % 360;
-  return `hsl(${hue}, 80%, 65%)`;
+  if (level >= 5)   return '#c084fc'; // Light Purple
+  return '#cbd5e1'; // Slate-300 (Silver) for Level 1-4
 }
 
 export function getWinRate(profile) {

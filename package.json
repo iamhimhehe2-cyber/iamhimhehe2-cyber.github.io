@@ -1,8 +1,8 @@
 {
   "name": "chess-cards",
-  "homepage": "https://iamhimhehe2-cyber.github.io/chess-cards",
+  "homepage": "https://iamhimhehe2-cyber.github.io",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.0.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
