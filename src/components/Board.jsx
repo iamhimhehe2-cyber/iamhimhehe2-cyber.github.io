@@ -28,7 +28,7 @@ function CaptureEffect({ effect }) {
   );
 }
 
-export default function Board({ state, onMove, playerColor, captureEffect = 'none' }) {
+export default function Board({ state, onMove, playerColor, captureEffect = 'none', activeSkin = 'none' }) {
   const [selectedSquare, setSelectedSquare] = useState(null);
   const [legalMoves, setLegalMoves] = useState([]);
   const [captureFlash, setCaptureFlash] = useState(null); // { r, c }
@@ -108,13 +108,69 @@ export default function Board({ state, onMove, playerColor, captureEffect = 'non
                 )}
                 {piece && (
                   <svg viewBox="0 0 100 100" className="w-[85%] h-[85%] select-none pointer-events-none drop-shadow-xl relative z-20">
+                    <defs>
+                      {/* Camouflage Pattern */}
+                      <pattern id="pattern-camo-w" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
+                        <rect width="40" height="40" fill="#78716c" />
+                        <path d="M0,10 Q5,0 15,5 T30,10 T40,20 V40 H0 Z" fill="#4ade80" opacity="0.6" />
+                        <path d="M20,0 Q30,10 25,25 T10,35 T0,20 Z" fill="#d6d3d1" opacity="0.4" />
+                      </pattern>
+                      <pattern id="pattern-camo-b" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
+                        <rect width="40" height="40" fill="#1c1917" />
+                        <path d="M0,10 Q5,0 15,5 T30,10 T40,20 V40 H0 Z" fill="#166534" opacity="0.7" />
+                        <path d="M20,0 Q30,10 25,25 T10,35 T0,20 Z" fill="#44403c" opacity="0.5" />
+                      </pattern>
+
+                      {/* Gold Gradient */}
+                      <linearGradient id="grad-gold" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor="#fbbf24" />
+                        <stop offset="50%" stopColor="#fef3c7" />
+                        <stop offset="100%" stopColor="#d97706" />
+                      </linearGradient>
+
+                      {/* Magma Gradient */}
+                      <radialGradient id="grad-magma" cx="50%" cy="50%" r="50%">
+                        <stop offset="0%" stopColor="#f97316" />
+                        <stop offset="70%" stopColor="#ef4444" />
+                        <stop offset="100%" stopColor="#1e1b4b" />
+                      </radialGradient>
+
+                      {/* Void Gradient */}
+                      <radialGradient id="grad-void" cx="50%" cy="50%" r="50%">
+                        <stop offset="0%" stopColor="#a855f7" />
+                        <stop offset="60%" stopColor="#6366f1" />
+                        <stop offset="100%" stopColor="#020617" />
+                      </radialGradient>
+
+                      {/* Ice Gradient */}
+                      <linearGradient id="grad-ice" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" stopColor="#f0f9ff" />
+                        <stop offset="50%" stopColor="#7dd3fc" />
+                        <stop offset="100%" stopColor="#0ea5e9" />
+                      </linearGradient>
+                    </defs>
+
                     <text x="50%" y="54%"
                       dominantBaseline="middle"
                       textAnchor="middle"
                       fontSize="75"
-                      fill={piece.color === 'w' ? '#f8fafc' : '#0f172a'}
-                      stroke={piece.color === 'w' ? '#00000080' : '#ffffff60'}
-                      strokeWidth="2"
+                      fill={
+                        activeSkin === 'none' ? (piece.color === 'w' ? '#f8fafc' : '#0f172a') :
+                        activeSkin === 'camo' ? `url(#pattern-camo-${piece.color})` :
+                        activeSkin === 'gold' ? 'url(#grad-gold)' :
+                        activeSkin === 'magma' ? 'url(#grad-magma)' :
+                        activeSkin === 'void' ? 'url(#grad-void)' :
+                        activeSkin === 'ice' ? 'url(#grad-ice)' :
+                        (piece.color === 'w' ? '#f8fafc' : '#0f172a')
+                      }
+                      stroke={
+                        activeSkin === 'none' ? (piece.color === 'w' ? '#00000080' : '#ffffff60') :
+                        activeSkin === 'gold' ? '#92400e' :
+                        activeSkin === 'magma' ? '#450a0a' :
+                        activeSkin === 'ice' ? '#0c4a6e' :
+                        (piece.color === 'w' ? '#00000080' : '#ffffff60')
+                      }
+                      strokeWidth={activeSkin === 'none' ? "2" : "1.5"}
                       style={{ filter: piece.stunTimer > 0 ? 'grayscale(1) opacity(0.6)' : 'none' }}
                     >
                       {PIECE_EMOJIS[piece.color][piece.type]}

@@ -678,7 +678,7 @@ export default function App() {
 
           <div style={{display:'flex',flexWrap:'wrap',gap:24,alignItems:'flex-start',justifyContent:'center',padding:'0 16px',maxWidth:1400,margin:'0 auto',width:'100%'}}>
             <div style={{flex:'1 1 0',maxWidth:'75vh',minWidth:280}}>
-              <Board state={gameState} onMove={handleMove} playerColor={gameMode==='pvp'?null:playerColor} captureEffect={profile.activeEffect || 'none'}/>
+              <Board state={gameState} onMove={handleMove} playerColor={gameMode==='pvp'?null:playerColor} captureEffect={profile.activeEffect || 'none'} activeSkin={profile.activeSkin || 'none'}/>
             </div>
             <div style={{display:'flex',flexDirection:'column',gap:16,width:300,flexShrink:0}}>
               <Dashboard 
@@ -687,6 +687,7 @@ export default function App() {
                 onDrawCard={gameMode==='pvp'?handleDrawCardOpponent:null} 
                 isPlayer={gameMode==='pvp'}
                 playerInfo={opponentProfile || (gameMode==='pvp' ? { username: 'Black', level: profile.level } : null)}
+                activeSkin={profile.activeSkin || 'none'}
               />
               <Dashboard 
                 color={playerColor} 
@@ -694,6 +695,7 @@ export default function App() {
                 onDrawCard={handleDrawCard} 
                 isPlayer={true}
                 playerInfo={profile}
+                activeSkin={profile.activeSkin || 'none'}
               />
             </div>
           </div>

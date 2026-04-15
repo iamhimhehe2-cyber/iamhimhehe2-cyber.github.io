@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { SHOP_ITEMS, LEVEL_EFFECTS, buyItem, setActiveEffect, getUnlockedEffects } from '../store/profile';
+import { SHOP_ITEMS, LEVEL_EFFECTS, SKINS, buyItem, buySkin, setActiveEffect, setActiveSkin, getUnlockedEffects } from '../store/profile';
 
 const EFFECT_STYLES = {
   none:      { bg:'transparent',   animation: '' },
@@ -45,6 +45,20 @@ export default function Shop({ profile, onProfileChange, onBack }) {
     const updated = setActiveEffect(profile, effectId);
     onProfileChange(updated);
     showNotif('Effect activated! ✨');
+  }
+
+  function handleBuySkin(skinId) {
+    if (profile.ownedSkins.includes(skinId)) { showNotif('Already owned!', false); return; }
+    const skin = SKINS.find(s => s.id === skinId);
+    if (profile.coins < skin.price) { showNotif('Not enough coins! 🪙', false); return; }
+    const { profile: updated, success } = buySkin(profile, skinId);
+    if (success) { onProfileChange(updated); showNotif(`${skin.name} skin acquired!`); }
+  }
+
+  function handleSetSkin(skinId) {
+    const updated = setActiveSkin(profile, skinId);
+    onProfileChange(updated);
+    showNotif('Skin equipped! 🛡️');
   }
 
   function handlePreview(e, effectId) {
@@ -120,9 +134,38 @@ export default function Shop({ profile, onProfileChange, onBack }) {
                   }}>
                     {isCenter && (
                       <>
-                        <CaptureEffect effect={previewId} />
+                        {!previewId.startsWith('skin_') && <CaptureEffect effect={previewId} />}
                         <svg viewBox="0 0 100 100" style={{width:'85%', height:'85%', position:'absolute', zIndex:10, animation:'previewPiece 2s infinite'}}>
-                          <text x="50%" y="54%" dominantBaseline="middle" textAnchor="middle" fontSize="75" fill="#f8fafc" stroke="#00000080" strokeWidth="2">
+                          {/* Skin defs duplicate for preview */}
+                          <defs>
+                            <pattern id="prev-camo-w" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
+                              <rect width="40" height="40" fill="#78716c" />
+                              <path d="M0,10 Q5,0 15,5 T30,10 T40,20 V40 H0 Z" fill="#4ade80" opacity="0.6" />
+                              <path d="M20,0 Q30,10 25,25 T10,35 T0,20 Z" fill="#d6d3d1" opacity="0.4" />
+                            </pattern>
+                            <linearGradient id="prev-gold" x1="0%" y1="0%" x2="100%" y2="100%">
+                              <stop offset="0%" stopColor="#fbbf24" /><stop offset="50%" stopColor="#fef3c7" /><stop offset="100%" stopColor="#d97706" />
+                            </linearGradient>
+                            <radialGradient id="prev-magma" cx="50%" cy="50%" r="50%">
+                              <stop offset="0%" stopColor="#f97316" /><stop offset="100%" stopColor="#1e1b4b" />
+                            </radialGradient>
+                            <radialGradient id="prev-void" cx="50%" cy="50%" r="50%">
+                              <stop offset="0%" stopColor="#a855f7" /><stop offset="100%" stopColor="#020617" />
+                            </radialGradient>
+                            <linearGradient id="prev-ice" x1="0%" y1="0%" x2="0%" y2="100%">
+                              <stop offset="0%" stopColor="#f0f9ff" /><stop offset="100%" stopColor="#0ea5e9" />
+                            </linearGradient>
+                          </defs>
+
+                          <text x="50%" y="54%" dominantBaseline="middle" textAnchor="middle" fontSize="75" 
+                            fill={
+                              previewId === 'camo' ? 'url(#prev-camo-w)' :
+                              previewId === 'gold' ? 'url(#prev-gold)' :
+                              previewId === 'magma' ? 'url(#prev-magma)' :
+                              previewId === 'void' ? 'url(#prev-void)' :
+                              previewId === 'ice' ? 'url(#prev-ice)' : '#f8fafc'
+                            } 
+                            stroke="#00000080" strokeWidth="2">
                             ♘
                           </text>
                         </svg>
@@ -143,7 +186,7 @@ export default function Shop({ profile, onProfileChange, onBack }) {
 
       {/* Tabs */}
       <div style={{display:'flex',gap:4,padding:'16px 24px 0',borderBottom:'1px solid rgba(255,255,255,0.07)'}}>
-        {['abilities','effects'].map(t => (
+        {['abilities','skins','effects'].map(t => (
           <button key={t} onClick={()=>setTab(t)} style={{
             padding:'10px 24px',borderRadius:'8px 8px 0 0',border:'none',cursor:'pointer',
             fontWeight:'bold',fontSize:14,transition:'all 0.2s',
@@ -151,7 +194,7 @@ export default function Shop({ profile, onProfileChange, onBack }) {
             color: tab===t ? '#fbbf24' : '#64748b',
             borderBottom: tab===t ? '2px solid #f59e0b' : '2px solid transparent'
           }}>
-            {t === 'abilities' ? '⚡ Abilities' : '✨ Effects'}
+            {t === 'abilities' ? '⚡ Abilities' : t === 'skins' ? '🎭 Skins' : '✨ Effects'}
           </button>
         ))}
       </div>
@@ -187,6 +230,62 @@ export default function Shop({ profile, onProfileChange, onBack }) {
                             fontWeight:'bold',fontSize:13,cursor: profile.coins >= item.price ? 'pointer' : 'not-allowed',
                           }}>Buy</button>
                       }
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {tab === 'skins' && (
+          <div>
+            <p style={{color:'#64748b',marginBottom:20,fontSize:14}}>
+              Customize your pieces with premium skins. Equipping a skin affects all pieces on the board.
+            </p>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(220px,1fr))',gap:16}}>
+              {SKINS.map(skin => {
+                const owned = profile.ownedSkins.includes(skin.id);
+                const active = profile.activeSkin === skin.id;
+                return (
+                  <div key={skin.id} style={{
+                    background:'rgba(255,255,255,0.03)',
+                    border:`1px solid ${active?'#fbbf24':owned?'rgba(16,185,129,0.3)':'rgba(255,255,255,0.06)'}`,
+                    borderRadius:16,padding:24,transition:'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                    boxShadow: active?'0 0 30px rgba(251,191,36,0.1)':'none'
+                  }}>
+                    <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:12}}>
+                       <div style={{fontSize:40}}>{skin.icon}</div>
+                       {skin.id !== 'none' && (
+                         <button onClick={() => setPreviewId(skin.id)} style={{
+                           background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)',
+                           borderRadius:6, padding:'4px 10px', fontSize:11, color:'#94a3b8', cursor:'pointer'
+                         }}>👁️ Preview</button>
+                       )}
+                    </div>
+                    <div style={{fontWeight:'bold',fontSize:18,marginBottom:4}}>{skin.name}</div>
+                    <div style={{fontSize:13,color:'#94a3b8',marginBottom:20}}>{skin.desc}</div>
+                    <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+                      <span style={{fontWeight:'bold',color:'#fbbf24',fontSize:16}}>
+                        {skin.price === 0 ? 'Free' : `🪙 ${skin.price}`}
+                      </span>
+                      {owned ? (
+                        <button onClick={()=>handleSetSkin(skin.id)} style={{
+                          padding:'8px 16px',borderRadius:8,border:'1px solid rgba(16,185,129,0.4)',
+                          background: active ? 'rgba(16,185,129,0.2)' : 'transparent',
+                          color: active ? '#34d399' : '#94a3b8',
+                          fontWeight:'bold',fontSize:13,cursor:'pointer'
+                        }}>
+                          {active ? 'Equipped' : 'Equip'}
+                        </button>
+                      ) : (
+                        <button onClick={()=>handleBuySkin(skin.id)} style={{
+                          padding:'8px 16px',borderRadius:8,border:'none',
+                          background: profile.coins >= skin.price ? 'linear-gradient(135deg,#f59e0b,#f97316)' : 'rgba(255,255,255,0.05)',
+                          color: profile.coins >= skin.price ? '#1a1a1a' : '#475569',
+                          fontWeight:'bold',fontSize:13,cursor: profile.coins >= skin.price ? 'pointer' : 'not-allowed',
+                        }}>Buy</button>
+                      )}
                     </div>
                   </div>
                 );

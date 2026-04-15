@@ -2,7 +2,7 @@ import React from 'react';
 import { ALL_ABILITIES } from '../chess-engine/engine';
 import { getTitle, getTitleColor, getWinRate } from '../store/profile';
 
-export default function Dashboard({ color, state, onDrawCard, isPlayer, playerInfo }) {
+export default function Dashboard({ color, state, onDrawCard, isPlayer, playerInfo, activeSkin = 'none' }) {
   const points = state.points[color] || 0;
   const cards = state.cards[color] || [];
   const capturedPieces = state.captured[color] || [];
@@ -113,16 +113,74 @@ export default function Dashboard({ color, state, onDrawCard, isPlayer, playerIn
             <p className="text-xs uppercase font-black tracking-widest">Awaiting Power</p>
           </div>
         ) : (
-          <div className="flex flex-col gap-2.5 max-h-[180px] overflow-y-auto pr-2 custom-scrollbar">
+          <div className="flex flex-col gap-3 max-h-[180px] overflow-y-auto pr-2 custom-scrollbar">
             {cards.map((id, i) => {
               const ability = ALL_ABILITIES.find(a => a.id === id);
+              // Infer piece type from ability name for the icon
+              let pieceType = 'p';
+              if (id.toLowerCase().includes('knight')) pieceType = 'n';
+              else if (id.toLowerCase().includes('bishop')) pieceType = 'b';
+              else if (id.toLowerCase().includes('rook')) pieceType = 'r';
+              else if (id.toLowerCase().includes('queen')) pieceType = 'q';
+              else if (id.toLowerCase().includes('king')) pieceType = 'k';
+
+              const pieceEmoji = { w: { p:'♙',n:'♘',b:'♗',r:'♖',q:'♕',k:'♔' }, b: { p:'♟',n:'♞',b:'♝',r:'♜',q:'♛',k:'♚' } }[color][pieceType];
+
               return (
-                <div key={`${id}-${i}`} className="shrink-0 bg-white/5 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-colors group">
-                  <div className="flex justify-between items-center mb-1">
-                     <p className="font-black text-white text-sm tracking-tight group-hover:text-amber-400 transition-colors">{ability?.name}</p>
-                     <span className="text-[10px] bg-white/10 px-2 py-0.5 rounded text-white/40 font-bold uppercase">Active</span>
+                <div key={`${id}-${i}`} style={{
+                  background: 'linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.01) 100%)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  padding: '12px 16px',
+                  borderRadius: '16px',
+                  position: 'relative',
+                  overflow: 'hidden'
+                }} className="shrink-0 group hover:border-amber-500/30 transition-all">
+                  <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                    {/* Visual Card Piece Icon */}
+                    <div style={{
+                      width: 40, height: 40, borderRadius: 10, flexShrink: 0,
+                      background: 'rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      border: '1px solid rgba(255,255,255,0.05)', position: 'relative'
+                    }}>
+                      <svg viewBox="0 0 100 100" style={{ width: '80%', height: '80%' }}>
+                        <defs>
+                          <pattern id={`card-camo-${color}`} x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
+                            <rect width="40" height="40" fill={color==='w'?'#78716c':'#1c1917'} />
+                            <path d="M0,10 Q5,0 15,5 T30,10 T40,20 V40 H0 Z" fill={color==='w'?'#4ade80':'#166534'} opacity="0.6" />
+                          </pattern>
+                          <linearGradient id="card-gold" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stopColor="#fbbf24" /><stop offset="100%" stopColor="#d97706" />
+                          </linearGradient>
+                          <radialGradient id="card-magma" cx="50%" cy="50%" r="50%">
+                            <stop offset="0%" stopColor="#f97316" /><stop offset="100%" stopColor="#1e1b4b" />
+                          </radialGradient>
+                          <radialGradient id="card-void" cx="50%" cy="50%" r="50%">
+                            <stop offset="0%" stopColor="#a855f7" /><stop offset="100%" stopColor="#020617" />
+                          </radialGradient>
+                          <linearGradient id="card-ice" x1="0%" y1="0%" x2="0%" y2="100%">
+                            <stop offset="0%" stopColor="#f0f9ff" /><stop offset="100%" stopColor="#0ea5e9" />
+                          </linearGradient>
+                        </defs>
+                        <text x="50%" y="54%" dominantBaseline="middle" textAnchor="middle" fontSize="70" 
+                          fill={
+                            activeSkin === 'camo' ? `url(#card-camo-${color})` :
+                            activeSkin === 'gold' ? 'url(#card-gold)' :
+                            activeSkin === 'magma' ? 'url(#card-magma)' :
+                            activeSkin === 'void' ? 'url(#card-void)' :
+                            activeSkin === 'ice' ? 'url(#card-ice)' : 
+                            (color === 'w' ? '#f8fafc' : '#94a3b8')
+                          }
+                        >
+                          {pieceEmoji}
+                        </text>
+                      </svg>
+                    </div>
+
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ margin: 0, fontWeight: 900, fontSize: 13, color: '#fff', letterSpacing: -0.2 }}>{ability?.name}</p>
+                      <p style={{ margin: 0, fontSize: 10, color: '#64748b', lineHeight: 1.2, marginTop: 2 }}>{ability?.desc}</p>
+                    </div>
                   </div>
-                  <p className="text-xs text-slate-400 leading-relaxed font-medium">{ability?.desc}</p>
                 </div>
               );
             })}

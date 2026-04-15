@@ -22,6 +22,15 @@ export const SHOP_ITEMS = [
   { id: 'ghost_piece', name: 'Ghost Piece', desc: 'One of your pieces is invisible to the opponent for 3 turns', icon: '👻', price: 180 },
 ];
 
+export const SKINS = [
+  { id: 'none',       name: 'Original',   icon: '⚪', price: 0,   desc: 'The classic chess look.' },
+  { id: 'camo',       name: 'Camo',       icon: '🌿', price: 150, desc: 'Stealthy military camouflage.' },
+  { id: 'gold',       name: 'Gold',       icon: '✨', price: 300, desc: 'Pure 24k gold plating.' },
+  { id: 'magma',      name: 'Magma',      icon: '🌋', price: 200, desc: 'Burning volcanic energy.' },
+  { id: 'void',       name: 'Void',       icon: '🌀', price: 250, desc: 'Cosmic stardust and shadows.' },
+  { id: 'ice',        name: 'Ice',        icon: '❄️', price: 180, desc: 'Frozen crystalline shards.' },
+];
+
 export const XP_REWARDS = {
   'ai-1': { win: 60,  coins: 25 },
   'ai-2': { win: 120, coins: 50 },
@@ -36,7 +45,9 @@ function defaultProfile() {
     level: 1, 
     coins: 100, 
     activeEffect: 'none', 
+    activeSkin: 'none',
     ownedItems: [],
+    ownedSkins: ['none'],
     username: 'Grandmaster',
     wins: 0,
     totalGames: 0,
@@ -152,8 +163,25 @@ export function buyItem(profile, itemId) {
   return { profile: updated, success: true };
 }
 
+export function buySkin(profile, skinId) {
+  const skin = SKINS.find(s => s.id === skinId);
+  if (!skin) return { profile, success: false };
+  if (profile.ownedSkins.includes(skinId)) return { profile, success: false };
+  const result = spendCoins(profile, skin.price);
+  if (!result.success) return result;
+  const updated = { ...result.profile, ownedSkins: [...result.profile.ownedSkins, skinId] };
+  saveProfile(updated);
+  return { profile: updated, success: true };
+}
+
 export function setActiveEffect(profile, effectId) {
   const updated = { ...profile, activeEffect: effectId };
+  saveProfile(updated);
+  return updated;
+}
+
+export function setActiveSkin(profile, skinId) {
+  const updated = { ...profile, activeSkin: skinId };
   saveProfile(updated);
   return updated;
 }
