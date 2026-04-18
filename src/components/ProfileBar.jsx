@@ -6,7 +6,7 @@ export default function ProfileBar({ profile }) {
   const xpNeeded = getXPForNextLevel(profile.level) - getXPForLevel(profile.level);
   const pct = Math.min(100, Math.round((xpCurrent / xpNeeded) * 100));
   
-  const title = getTitle(profile.level);
+  const title = getTitle(profile);
   const titleColor = getTitleColor(profile.level);
 
   return (

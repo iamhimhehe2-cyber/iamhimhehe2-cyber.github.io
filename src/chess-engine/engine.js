@@ -50,7 +50,11 @@ export function createInitialState() {
     captured: { w: [], b: [] }, // pieces captured BY this color
     winner: null,
     inCheck: false,
-    fivePieceRuleTriggered: { w: false, b: false }
+    fivePieceRuleTriggered: { w: false, b: false },
+    matchStats: {
+      w: { modernKnightKills: 0, pawnPromotions: 0, essenceCollected: 0, cardsDrawn: 0 },
+      b: { modernKnightKills: 0, pawnPromotions: 0, essenceCollected: 0, cardsDrawn: 0 }
+    }
   };
 }
 
@@ -467,6 +471,8 @@ export function executeMove(state, move) {
         if (target.color !== color) {
           nextState.points[color] += pts;
           nextState.captured[color] = [...nextState.captured[color], target.type];
+          nextState.matchStats[color].modernKnightKills++;
+          nextState.matchStats[color].essenceCollected += pts;
         }
         board[move.to.r][move.to.c] = null;
       }
@@ -486,6 +492,7 @@ export function executeMove(state, move) {
       const pts = PIECE_VALUES[targetPiece.type] || 0;
       nextState.points[color] += pts;
       nextState.captured[color] = [...nextState.captured[color], targetPiece.type];
+      nextState.matchStats[color].essenceCollected += pts;
     }
     
     // move piece
@@ -496,6 +503,7 @@ export function executeMove(state, move) {
     // pawn promotion
     if (piece.type === 'p' && (move.to.r === 0 || move.to.r === 7)) {
       board[move.to.r][move.to.c] = { type: 'q', color };
+      nextState.matchStats[color].pawnPromotions++;
     }
   }
 
@@ -547,6 +555,7 @@ export function drawCard(state, color) {
       const nextState = { ...state };
       nextState.points = { ...state.points, [color]: state.points[color] - 5 };
       nextState.cards = { ...state.cards, [color]: [...currentCards, drawn.id] };
+      nextState.matchStats[color].cardsDrawn++;
       return { nextState, drawnCard: drawn };
     }
   }

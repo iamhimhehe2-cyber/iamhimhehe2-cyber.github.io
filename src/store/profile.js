@@ -39,6 +39,24 @@ export const XP_REWARDS = {
   'pvp': { win: 40, coins: 15 },
 };
 
+// ── Quests ──────────────────────────────────────────────────────────────────
+export const PERMANENT_QUESTS = [
+  { id: 'pawn_to_queen', name: 'Ascension', desc: 'Upgrade a pawn to a Queen', rewardXp: 300, type: 'promo', target: 1 },
+  { id: 'stun_kill_achievement', name: 'Stun Kill', desc: 'Use modern knight to kill 5 cards in one match', rewardTitle: 'STUN KILL', type: 'match_modern_knight_kills', target: 5 },
+  { id: 'grandmaster_achievement', name: 'The Grandmaster', desc: 'Win a game against AI Level 3', rewardTitle: 'GRANDMASTER', type: 'win_ai_3', target: 1 },
+  { id: 'win_streak_achievement', name: 'Unstoppable', desc: 'Maintain a 5-win streak', rewardTitle: 'UNSTOPPABLE', type: 'win_streak', target: 5 },
+  { id: 'collector_achievement', name: 'Hoarder', desc: 'Hold 15 soul essence at once', rewardTitle: 'ESSENCE HOARDER', type: 'hold_essence', target: 15 },
+  { id: 'deck_master', name: 'Tactician', desc: 'Draw 5 cards in a single match', rewardTitle: 'TACTICIAN', type: 'match_cards_drawn', target: 5 },
+];
+
+export const DAILY_QUEST_POOL = [
+  ...Array.from({length: 20}, (_, i) => ({ id: `daily_win_${i+1}`, type: 'win', target: Math.ceil((i+1)/4), rewardXp: 100 * (i+1), name: `Victory Lap ${i+1}`, desc: `Win ${Math.ceil((i+1)/4)} matches` })),
+  ...Array.from({length: 20}, (_, i) => ({ id: `daily_capture_${i+1}`, type: 'capture', target: (i+1)*3, rewardXp: 50 * (i+1), name: `Soul Harvester ${i+1}`, desc: `Capture ${(i+1)*3} pieces` })),
+  ...Array.from({length: 20}, (_, i) => ({ id: `daily_draw_${i+1}`, type: 'draw', target: Math.ceil((i+1)/2), rewardXp: 40 * (i+1), name: `Card Shark ${i+1}`, desc: `Draw ${Math.ceil((i+1)/2)} cards` })),
+  ...Array.from({length: 20}, (_, i) => ({ id: `daily_essence_${i+1}`, type: 'essence', target: (i+1)*10, rewardXp: 60 * (i+1), name: `Essence Flux ${i+1}`, desc: `Collect ${(i+1)*10} soul essence` })),
+  ...Array.from({length: 20}, (_, i) => ({ id: `daily_promo_${i+1}`, type: 'promo', target: 1, rewardXp: 200, name: `Promotion Day ${i+1}`, desc: `Promote a pawn to Queen` })),
+];
+
 function defaultProfile() {
   return {
     xp: 0,
@@ -51,7 +69,13 @@ function defaultProfile() {
     username: 'Grandmaster',
     wins: 0,
     totalGames: 0,
-    winStreak: 0
+    winStreak: 0,
+    unlockedTitles: [],      // Titles like 'STUN KILL'
+    equippedTitleId: null,      // Manual title
+    questProgress: {},       // { questId: currentProgress }
+    dailyQuestIds: [],       // Current 5 quests
+    lastQuestReset: null,    // Date string
+    completedQuests: []      // Completed permanent quest IDs
   };
 }
 
@@ -81,7 +105,9 @@ export function getXPForNextLevel(level) {
   return Math.pow(level, 2) * XP_COEFF;
 }
 
-export function getTitle(level) {
+export function getTitle(profile) {
+  if (profile.equippedTitleId) return profile.equippedTitleId;
+  const { level } = profile;
   if (level >= 1000) return 'TOUCH GRASS';
   if (level >= 500) return 'SYSTEM ERROR';
   if (level >= 250) return 'GODLIKE';
@@ -176,6 +202,79 @@ export function setActiveSkin(profile, skinId) {
 
 export function setUsername(profile, name) {
   const updated = { ...profile, username: name.substring(0, 16) };
+  saveProfile(updated);
+  return updated;
+}
+
+export function getActiveQuests(profile) {
+  const today = new Date().toDateString();
+  let updated = { ...profile };
+  let changed = false;
+
+  if (profile.lastQuestReset !== today) {
+    const ids = [];
+    const pool = [...DAILY_QUEST_POOL];
+    for (let i=0; i<5; i++) {
+      const idx = Math.floor(Math.random() * pool.length);
+      ids.push(pool[idx].id);
+      pool.splice(idx, 1);
+    }
+    updated.dailyQuestIds = ids;
+    updated.lastQuestReset = today;
+    // We don't necessarily reset progress if we want multi-day quests, 
+    // but the user said "switches to another 5 quests", implying replacement.
+    changed = true;
+  }
+  
+  if (changed) saveProfile(updated);
+  
+  const dailies = updated.dailyQuestIds.map(id => DAILY_QUEST_POOL.find(q => q.id === id)).filter(Boolean);
+  return { dailies, updated };
+}
+
+export function updateQuestProgress(profile, type, amount, isMatchEnd = false) {
+  let updated = { ...profile, questProgress: { ...profile.questProgress } };
+  let rewards = { xp: 0, titles: [] };
+  
+  const allQuests = [...DAILY_QUEST_POOL, ...PERMANENT_QUESTS];
+  const activeIds = [...profile.dailyQuestIds, ...PERMANENT_QUESTS.map(q => q.id)];
+  
+  activeIds.forEach(id => {
+    const q = allQuests.find(quest => quest.id === id);
+    if (!q || q.type !== type) return;
+    if (profile.completedQuests.includes(id)) return;
+    
+    const current = updated.questProgress[id] || 0;
+    if (current >= q.target) return;
+    
+    const nextValue = isMatchEnd ? amount : (current + amount);
+    updated.questProgress[id] = nextValue;
+    
+    if (nextValue >= q.target) {
+      // Completed!
+      if (q.rewardXp) rewards.xp += q.rewardXp;
+      if (q.rewardTitle) {
+        rewards.titles.push(q.rewardTitle);
+        updated.unlockedTitles = Array.from(new Set([...updated.unlockedTitles, q.rewardTitle]));
+      }
+      if (PERMANENT_QUESTS.some(pq => pq.id === id)) {
+        updated.completedQuests = [...updated.completedQuests, id];
+      }
+    }
+  });
+
+  if (rewards.xp > 0 || rewards.titles.length > 0) {
+    const { profile: profilesAfterXp } = awardXP(updated, rewards.xp, 0, false);
+    updated = profilesAfterXp;
+  } else {
+    saveProfile(updated);
+  }
+
+  return { updated, rewards };
+}
+
+export function equipTitle(profile, titleId) {
+  const updated = { ...profile, equippedTitleId: titleId };
   saveProfile(updated);
   return updated;
 }

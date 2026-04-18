@@ -8,9 +8,10 @@ import Shop from './components/Shop';
 import ProfileBar from './components/ProfileBar';
 import LevelUpModal from './components/LevelUpModal';
 import AFKZone from './components/AFKZone';
+import Quests from './components/Quests';
 import { createInitialState, executeMove, drawCard } from './chess-engine/engine';
 import { getAIMove } from './chess-engine/ai';
-import { loadProfile, saveProfile, awardXP, XP_REWARDS, setUsername, getTitle, getTitleColor, getWinRate, getXPForLevel, getXPForNextLevel } from './store/profile';
+import { loadProfile, saveProfile, awardXP, XP_REWARDS, setUsername, getTitle, getTitleColor, getWinRate, getXPForLevel, getXPForNextLevel, updateQuestProgress } from './store/profile';
 
 // ── Quick Match slot helpers ──────────────────────────────────────────────────
 const QM_TOTAL = 10; // Low amount to ensure players actually match
@@ -40,8 +41,8 @@ export default function App() {
   
   // Force update document title for verification
   useEffect(() => {
-    document.title = `Chess: Ascended V0.0.2 | ${getTitle(profile.level)}`;
-  }, [profile.level]);
+    document.title = `Chess: Ascended V0.0.2 | ${getTitle(profile)}`;
+  }, [profile]);
 
   // Award XP when the game ends
   useEffect(() => {
@@ -61,7 +62,26 @@ export default function App() {
       const rewards = XP_REWARDS[rewardKey] || { win: 40, coins: 15 };
 
       const { profile: updated, leveled, newLevel } = awardXP(profile, rewards.win, rewards.coins, isMyWin);
-      setProfile(updated);
+      
+      // Update Quests
+      let currentProfile = updated;
+      const stats = gameState.matchStats[playerColor];
+      if (stats) {
+        if (stats.modernKnightKills > 0) currentProfile = updateQuestProgress(currentProfile, 'match_modern_knight_kills', stats.modernKnightKills, true).updated;
+        if (stats.pawnPromotions > 0) currentProfile = updateQuestProgress(currentProfile, 'promo', stats.pawnPromotions).updated;
+        if (stats.essenceCollected > 0) currentProfile = updateQuestProgress(currentProfile, 'essence', stats.essenceCollected).updated;
+        if (stats.cardsDrawn > 0) {
+          currentProfile = updateQuestProgress(currentProfile, 'match_cards_drawn', stats.cardsDrawn, true).updated;
+          currentProfile = updateQuestProgress(currentProfile, 'draw', stats.cardsDrawn).updated;
+        }
+        if (gameMode === 'ai-3' && gameState.winner === playerColor) currentProfile = updateQuestProgress(currentProfile, 'win_ai_3', 1).updated;
+        if (gameState.winner === playerColor) {
+           currentProfile = updateQuestProgress(currentProfile, 'win', 1).updated;
+           currentProfile = updateQuestProgress(currentProfile, 'win_streak', currentProfile.winStreak, true).updated;
+        }
+      }
+
+      setProfile(currentProfile);
       setXpNotif({ xp: rewards.win, coins: rewards.coins });
       setTimeout(() => setXpNotif(null), 3000);
       if (leveled) {
@@ -334,6 +354,13 @@ export default function App() {
   const handleMove = (move) => {
     const next = executeMove(gameState, move);
     setGameState(next);
+    
+    // Track essence holding quest
+    if (next.points[playerColor] >= 15) {
+      const { updated } = updateQuestProgress(profile, 'hold_essence', next.points[playerColor], true);
+      setProfile(updated);
+    }
+
     if ((gameMode === 'online' || gameMode === 'quick') && connRef.current) {
       connRef.current.send(next);
     }
@@ -383,6 +410,10 @@ export default function App() {
           <ProfileBar profile={profile}/>
           <AFKZone profile={profile} onProfileChange={p => { setProfile(p); saveProfile(p); }} onBack={() => navigate('/')} />
         </>
+      } />
+
+      <Route path="/quests" element={
+        <Quests profile={profile} onProfileChange={p => { setProfile(p); saveProfile(p); }} onBack={() => navigate('/')} />
       } />
 
       <Route path="/" element={
@@ -580,6 +611,13 @@ export default function App() {
                         background:'rgba(99,102,241,0.08)',color:'#818cf8',fontWeight:'bold',display:'flex',alignItems:'center',justifyContent:'center',gap:6
                       }}>
                         🌙 AFK Zone
+                      </button>
+                      <button onClick={()=>navigate('/quests')} style={{
+                        gridColumn: 'span 3',
+                        padding:'14px',borderRadius:10,border:'1px solid rgba(16,185,129,0.3)',cursor:'pointer',
+                        background:'rgba(16,185,129,0.1)',color:'#34d399',fontWeight:'bold',display:'flex',alignItems:'center',justifyContent:'center',gap:8
+                      }}>
+                        📋 View Quests & Titles
                       </button>
                     </div>
                   </div>
