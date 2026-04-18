@@ -90,7 +90,7 @@ export function getTitle(level) {
   if (level >= 50) return 'WHATS GRASS';
   if (level >= 25) return 'EAT SLEEP CHESS REPEAT';
   if (level >= 10) return 'MAXX';
-  return 'NOVICE';
+  return '';
 }
 
 export function getTitleColor(level) {
