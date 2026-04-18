@@ -443,7 +443,13 @@ function copyBoard(board) {
 }
 
 export function executeMove(state, move) {
-  const nextState = { ...state };
+  const nextState = { 
+    ...state,
+    points: { ...state.points },
+    cards: { ...state.cards },
+    captured: { ...state.captured },
+    fivePieceRuleTriggered: { ...state.fivePieceRuleTriggered }
+  };
   nextState.board = copyBoard(state.board);
   const color = state.turn;
   const board = nextState.board;

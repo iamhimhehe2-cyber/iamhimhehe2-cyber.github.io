@@ -452,7 +452,8 @@ export default function App() {
                       <h3 style={{fontSize:22, fontWeight:900, color:'#f8fafc', margin:0, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{profile.username}</h3>
                       <div style={{
                         fontSize:11, fontWeight:900, textTransform:'uppercase', letterSpacing:2, marginTop:4,
-                        background: getTitleColor(profile.level), WebkitBackgroundClip: getTitleColor(profile.level).includes('gradient') ? 'text' : 'none',
+                        background: getTitleColor(profile.level).includes('gradient') ? getTitleColor(profile.level) : 'none', 
+                        WebkitBackgroundClip: getTitleColor(profile.level).includes('gradient') ? 'text' : 'none',
                         WebkitTextFillColor: getTitleColor(profile.level).includes('gradient') ? 'transparent' : getTitleColor(profile.level),
                         color: getTitleColor(profile.level).includes('gradient') ? 'transparent' : getTitleColor(profile.level),
                         filter: getTitleColor(profile.level).includes('gradient') ? 'drop-shadow(0 0 4px rgba(255,255,255,0.1))' : 'none'
@@ -578,7 +579,7 @@ export default function App() {
                         padding:'12px',borderRadius:10,border:'1px solid rgba(99,102,241,0.3)',cursor:'pointer',
                         background:'rgba(99,102,241,0.08)',color:'#818cf8',fontWeight:'bold',display:'flex',alignItems:'center',justifyContent:'center',gap:6
                       }}>
-                        🌙 Grounds
+                        🌙 AFK Zone
                       </button>
                     </div>
                   </div>
@@ -677,10 +678,8 @@ export default function App() {
           </div>
 
           <div style={{display:'flex',flexWrap:'wrap',gap:24,alignItems:'flex-start',justifyContent:'center',padding:'0 16px',maxWidth:1400,margin:'0 auto',width:'100%'}}>
-            <div style={{flex:'1 1 0',maxWidth:'75vh',minWidth:280}}>
-              <Board state={gameState} onMove={handleMove} playerColor={gameMode==='pvp'?null:playerColor} captureEffect={profile.activeEffect || 'none'} activeSkin={profile.activeSkin || 'none'}/>
-            </div>
-            <div style={{display:'flex',flexDirection:'column',gap:16,width:300,flexShrink:0}}>
+            {/* Opponent Dashboard */}
+            <div style={{width:300,flexShrink:0}}>
               <Dashboard 
                 color={oppColor} 
                 state={gameState} 
@@ -689,6 +688,15 @@ export default function App() {
                 playerInfo={opponentProfile || (gameMode==='pvp' ? { username: 'Black', level: profile.level } : null)}
                 activeSkin={profile.activeSkin || 'none'}
               />
+            </div>
+
+            {/* Chess Board */}
+            <div style={{flex:'1 1 0',maxWidth:'75vh',minWidth:280}}>
+              <Board state={gameState} onMove={handleMove} playerColor={gameMode==='pvp'?null:playerColor} captureEffect={profile.activeEffect || 'none'} activeSkin={profile.activeSkin || 'none'}/>
+            </div>
+
+            {/* Player Dashboard */}
+            <div style={{width:300,flexShrink:0}}>
               <Dashboard 
                 color={playerColor} 
                 state={gameState} 

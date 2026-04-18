@@ -111,7 +111,7 @@ export function getTitleColor(level) {
   if (level >= 30) return '#f472b6'; // Pink
   if (level >= 15) return '#fb7185'; // Rose
   if (level >= 5) return '#c084fc'; // Light Purple
-  return '#000000ff'; // Slate-300 (Silver) for Level 1-4
+  return '#f8fafc'; // White for Level 1-4
 }
 
 export function getWinRate(profile) {

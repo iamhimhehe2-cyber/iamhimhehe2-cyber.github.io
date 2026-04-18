@@ -35,7 +35,8 @@ export default function ProfileBar({ profile }) {
             {title && (
               <span style={{
                 fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: 1.5,
-                background: titleColor, WebkitBackgroundClip: titleColor.includes('gradient') ? 'text' : 'none',
+                background: titleColor.includes('gradient') ? titleColor : 'none', 
+                WebkitBackgroundClip: titleColor.includes('gradient') ? 'text' : 'none',
                 WebkitTextFillColor: titleColor.includes('gradient') ? 'transparent' : titleColor,
                 color: titleColor.includes('gradient') ? 'transparent' : titleColor,
                 whiteSpace: 'nowrap',

@@ -63,7 +63,7 @@ export default function AFKZone({ profile, onProfileChange, onBack }) {
 
       <div style={{ zIndex: 10, textAlign: 'center', maxWidth: 600, width: '100%' }}>
         <h1 style={{ fontSize: 52, fontWeight: 900, fontFamily: 'Outfit, sans-serif', marginBottom: 12, background: 'linear-gradient(135deg, #818cf8, #6366f1)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', filter: 'drop-shadow(0 0 20px rgba(99,102,241,0.3))' }}>
-          Resting Grounds
+          AFK Zone
         </h1>
         <p style={{ color: '#64748b', fontSize: 15, marginBottom: 40, letterSpacing: 0.5, lineHeight: 1.6 }}>
           Channel passive energy while you rest. <br />

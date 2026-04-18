@@ -43,7 +43,8 @@ export default function Dashboard({ color, state, onDrawCard, isPlayer, playerIn
             }}>
               <span style={{
                 fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: 2.5,
-                background: titleColor, WebkitBackgroundClip: titleColor.includes('gradient') ? 'text' : 'none',
+                background: titleColor.includes('gradient') ? titleColor : 'none', 
+                WebkitBackgroundClip: titleColor.includes('gradient') ? 'text' : 'none',
                 WebkitTextFillColor: titleColor.includes('gradient') ? 'transparent' : titleColor,
                 color: titleColor.includes('gradient') ? 'transparent' : titleColor,
                 filter: titleColor.includes('gradient') ? 'drop-shadow(0 0 8px rgba(255,255,255,0.2))' : 'none'
@@ -201,15 +202,6 @@ export default function Dashboard({ color, state, onDrawCard, isPlayer, playerIn
         </div>
       </div>
 
-      {/* AdSense Unit Placeholder */}
-      <div style={{ marginTop: 24, padding: 10, background: 'rgba(0,0,0,0.2)', border: '1px dashed rgba(255,255,255,0.05)', borderRadius: 12, textAlign: 'center' }}>
-        <p style={{ margin: 0, fontSize: 10, color: '#475569', fontWeight: 900, textTransform: 'uppercase', letterSpacing: 2 }}>Advertisement</p>
-        <ins className="adsbygoogle"
-             style={{ display: 'block' }}
-             data-ad-client="ca-pub-9992695561469755"
-             data-ad-slot="YOUR_GAME_AD_SLOT"
-             data-ad-format="auto" />
-      </div>
     </div>
   );
 }
