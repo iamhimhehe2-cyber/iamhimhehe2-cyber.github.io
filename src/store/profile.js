@@ -95,10 +95,10 @@ export function getTitle(level) {
   if (level >= 40) return 'ZENITH';
   if (level >= 30) return 'MASTER';
   if (level >= 20) return 'ADEPT';
-  if (level >= 15) return 'DISCIPLE';
-  if (level >= 10) return 'ELITE';
+  if (level >= 15) return 'ELITE';
+  if (level >= 10) return 'MAX';
   if (level >= 5) return 'PRODIGY';
-  return 'MAX';
+  return 'NOVICE';
 }
 
 export function getTitleColor(level) {
