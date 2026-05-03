@@ -76,6 +76,7 @@ function defaultProfile() {
     ownedItems: [],
     ownedSkins: ['none'],
     ownedBoards: ['classic'],
+    redeemedCodes: [],
     username: 'Grandmaster',
     wins: 0,
     totalGames: 0,
@@ -95,6 +96,7 @@ export function loadProfile() {
     const parsed = JSON.parse(raw);
     if (!parsed.ownedBoards) parsed.ownedBoards = ['classic'];
     if (!parsed.activeBoard) parsed.activeBoard = 'classic';
+    if (!parsed.redeemedCodes) parsed.redeemedCodes = [];
     return raw ? { ...defaultProfile(), ...parsed } : defaultProfile();
   } catch { return defaultProfile(); }
 }
@@ -236,6 +238,33 @@ export function setUsername(profile, name) {
   const updated = { ...profile, username: name.substring(0, 16) };
   saveProfile(updated);
   return updated;
+}
+
+
+export function redeemCode(profile, code) {
+  const codeStr = code.trim().toUpperCase();
+  const redeemed = profile.redeemedCodes || [];
+  
+  if (redeemed.includes(codeStr)) {
+    return { profile, success: false, message: 'Code already redeemed!' };
+  }
+
+  let updated = { ...profile, redeemedCodes: [...redeemed, codeStr] };
+  let rewards = null;
+
+  if (codeStr === 'EXP4000') {
+    const { profile: afterXp } = awardXP(updated, 4000, 0, false);
+    updated = afterXp;
+    rewards = '4000 EXP';
+  } else if (codeStr === 'GOLD1000') {
+    updated = { ...updated, coins: updated.coins + 1000 };
+    saveProfile(updated);
+    rewards = '1000 Coins';
+  } else {
+    return { profile, success: false, message: 'Invalid code!' };
+  }
+
+  return { profile: updated, success: true, message: `Redeemed ${rewards}!` };
 }
 
 export function getActiveQuests(profile) {

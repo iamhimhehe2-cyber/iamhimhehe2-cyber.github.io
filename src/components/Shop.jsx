@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { SHOP_ITEMS, LEVEL_EFFECTS, SKINS, BOARDS, buyItem, buySkin, buyBoard, setActiveEffect, setActiveSkin, setActiveBoard, getUnlockedEffects } from '../store/profile';
+import { SHOP_ITEMS, LEVEL_EFFECTS, SKINS, BOARDS, buyItem, buySkin, buyBoard, redeemCode, setActiveEffect, setActiveSkin, setActiveBoard, getUnlockedEffects } from '../store/profile';
 
 const EFFECT_STYLES = {
   none:      { bg:'transparent',   animation: '' },
@@ -82,6 +82,20 @@ export default function Shop({ profile, onProfileChange, onBack }) {
       setPreviewId(effectId);
       setTimeout(() => setPreviewId(null), 800);
     }, 10);
+  }
+
+  const [codeInputValue, setCodeInputValue] = useState('');
+
+  function handleRedeem() {
+    if (!codeInputValue.trim()) return;
+    const { profile: updated, success, message } = redeemCode(profile, codeInputValue);
+    if (success) {
+      onProfileChange(updated);
+      showNotif(message, true);
+      setCodeInputValue('');
+    } else {
+      showNotif(message, false);
+    }
   }
 
   const unlockedEffects = getUnlockedEffects(profile.level);
@@ -200,7 +214,7 @@ export default function Shop({ profile, onProfileChange, onBack }) {
 
       {/* Tabs */}
       <div style={{display:'flex',gap:4,padding:'16px 24px 0',borderBottom:'1px solid rgba(255,255,255,0.07)'}}>
-        {['abilities','skins','effects','boards'].map(t => (
+        {['abilities','skins','effects','boards','redeem'].map(t => (
           <button key={t} onClick={()=>setTab(t)} style={{
             padding:'10px 24px',borderRadius:'8px 8px 0 0',border:'none',cursor:'pointer',
             fontWeight:'bold',fontSize:14,transition:'all 0.2s',
@@ -208,7 +222,7 @@ export default function Shop({ profile, onProfileChange, onBack }) {
             color: tab===t ? '#fbbf24' : '#64748b',
             borderBottom: tab===t ? '2px solid #f59e0b' : '2px solid transparent'
           }}>
-            {t === 'abilities' ? '⚡ Abilities' : t === 'skins' ? '🎭 Skins' : t === 'effects' ? '✨ Effects' : '🗺️ Boards'}
+            {t === 'abilities' ? '⚡ Abilities' : t === 'skins' ? '🎭 Skins' : t === 'effects' ? '✨ Effects' : t === 'boards' ? '🗺️ Boards' : '🎁 Redeem'}
           </button>
         ))}
       </div>
@@ -355,6 +369,38 @@ export default function Shop({ profile, onProfileChange, onBack }) {
                   </div>
                 );
               })}
+            </div>
+          </div>
+        )}
+
+        {tab === 'redeem' && (
+          <div style={{display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', minHeight:'300px'}}>
+            <div style={{fontSize:60, marginBottom:16}}>🎁</div>
+            <h2 style={{color:'#f8fafc', fontSize:24, marginBottom:8}}>Redeem a Code</h2>
+            <p style={{color:'#64748b', marginBottom:24, textAlign:'center', maxWidth:400}}>
+              Enter a secret promotional code to receive free coins, XP, or exclusive items!
+            </p>
+            <div style={{display:'flex', gap:12, width:'100%', maxWidth:350}}>
+              <input 
+                type="text" 
+                value={codeInputValue}
+                onChange={e => setCodeInputValue(e.target.value)}
+                placeholder="Enter Code Here..."
+                style={{
+                  flex:1, padding:'12px 16px', borderRadius:12, border:'1px solid rgba(255,255,255,0.1)',
+                  background:'rgba(0,0,0,0.3)', color:'#fff', fontSize:16, outline:'none',
+                  textTransform: 'uppercase'
+                }}
+                onKeyDown={e => e.key === 'Enter' && handleRedeem()}
+              />
+              <button onClick={handleRedeem} style={{
+                padding:'12px 24px', borderRadius:12, border:'none',
+                background: 'linear-gradient(135deg,#f59e0b,#f97316)',
+                color: '#1a1a1a', fontWeight:'bold', fontSize:16, cursor:'pointer',
+                boxShadow:'0 4px 15px rgba(245,158,11,0.3)'
+              }}>
+                Redeem
+              </button>
             </div>
           </div>
         )}
