@@ -31,6 +31,14 @@ export const SKINS = [
   { id: 'ice', name: 'Ice', icon: '❄️', price: 180, desc: 'Frozen crystalline shards.' },
 ];
 
+
+export const BOARDS = [
+  { id: 'classic', name: 'Classic', icon: '♟️', price: 0, desc: 'The traditional wooden chess board.' },
+  { id: 'cyberpunk', name: 'Cyberpunk', icon: '🌃', price: 400, desc: 'Neon grids and glitchy interactions.' },
+  { id: 'space', name: 'Deep Space', icon: '🌌', price: 500, desc: 'Parallax stars and cosmic ripples.' },
+  { id: 'underwater', name: 'Underwater', icon: '🌊', price: 450, desc: 'Rising bubbles and water splashes.' },
+];
+
 export const XP_REWARDS = {
   'ai-1': { win: 60, coins: 25 },
   'ai-2': { win: 120, coins: 50 },
@@ -64,8 +72,10 @@ function defaultProfile() {
     coins: 100,
     activeEffect: 'none',
     activeSkin: 'none',
+    activeBoard: 'classic',
     ownedItems: [],
     ownedSkins: ['none'],
+    ownedBoards: ['classic'],
     username: 'Grandmaster',
     wins: 0,
     totalGames: 0,
@@ -82,7 +92,10 @@ function defaultProfile() {
 export function loadProfile() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? { ...defaultProfile(), ...JSON.parse(raw) } : defaultProfile();
+    const parsed = JSON.parse(raw);
+    if (!parsed.ownedBoards) parsed.ownedBoards = ['classic'];
+    if (!parsed.activeBoard) parsed.activeBoard = 'classic';
+    return raw ? { ...defaultProfile(), ...parsed } : defaultProfile();
   } catch { return defaultProfile(); }
 }
 
@@ -196,6 +209,25 @@ export function setActiveEffect(profile, effectId) {
 
 export function setActiveSkin(profile, skinId) {
   const updated = { ...profile, activeSkin: skinId };
+  saveProfile(updated);
+  return updated;
+}
+
+
+export function buyBoard(profile, boardId) {
+  const board = BOARDS.find(b => b.id === boardId);
+  if (!board) return { profile, success: false };
+  const owned = profile.ownedBoards || ['classic'];
+  if (owned.includes(boardId)) return { profile, success: false };
+  const result = spendCoins(profile, board.price);
+  if (!result.success) return result;
+  const updated = { ...result.profile, ownedBoards: [...owned, boardId] };
+  saveProfile(updated);
+  return { profile: updated, success: true };
+}
+
+export function setActiveBoard(profile, boardId) {
+  const updated = { ...profile, activeBoard: boardId };
   saveProfile(updated);
   return updated;
 }

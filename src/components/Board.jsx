@@ -28,11 +28,12 @@ function CaptureEffect({ effect }) {
   );
 }
 
-export default function Board({ state, onMove, playerColor, captureEffect = 'none', activeSkin = 'none' }) {
+export default function Board({ state, onMove, playerColor, captureEffect = 'none', activeSkin = 'none', activeBoard = 'classic' }) {
   const [selectedSquare, setSelectedSquare] = useState(null);
   const [legalMoves, setLegalMoves] = useState([]);
   const [captureFlash, setCaptureFlash] = useState(null); // { r, c }
   const prevBoardRef = useRef(state.board);
+  const [moveReactions, setMoveReactions] = useState([]);
 
   // Detect captures by comparing board state
   useEffect(() => {
@@ -68,6 +69,11 @@ export default function Board({ state, onMove, playerColor, captureEffect = 'non
       if (move) {
         onMove(move);
         setSelectedSquare(null);
+        if (activeBoard !== 'classic') {
+          const newId = Date.now();
+          setMoveReactions(prev => [...prev, { r: move.to.r, c: move.to.c, id: newId }]);
+          setTimeout(() => setMoveReactions(prev => prev.filter(m => m.id !== newId)), 500);
+        }
       } else {
         if (piece && piece.color === state.turn) setSelectedSquare({ r, c });
         else setSelectedSquare(null);
@@ -81,7 +87,7 @@ export default function Board({ state, onMove, playerColor, captureEffect = 'non
 
   return (
     <div className="flex flex-col items-center w-full">
-      <div className="grid grid-cols-8 grid-rows-8 w-full h-full aspect-square border-[6px] border-slate-800 rounded-lg shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden">
+      <div className={`grid grid-cols-8 grid-rows-8 w-full h-full aspect-square border-[6px] border-slate-800 rounded-lg shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden ${activeBoard === 'cyberpunk' ? 'bg-cyberpunk-grid' : activeBoard === 'space' ? 'bg-space-stars' : activeBoard === 'underwater' ? 'bg-underwater' : ''} `}>
         {state.board.map((row, r) =>
           row.map((piece, c) => {
             const isSelected = selectedSquare?.r === r && selectedSquare?.c === c;
@@ -100,6 +106,9 @@ export default function Board({ state, onMove, playerColor, captureEffect = 'non
                 `}
               >
                 {isFlashing && captureEffect !== 'none' && <CaptureEffect effect={captureEffect} />}
+                {moveReactions.some(m => m.r === r && m.c === c) && (
+                  <div className={`absolute inset-0 pointer-events-none ${activeBoard === 'cyberpunk' ? 'reaction-cyber' : activeBoard === 'space' ? 'reaction-space' : activeBoard === 'underwater' ? 'reaction-water' : ''} `}/>
+                )}
                 {isLegalMove && !isCapture && (
                   <div className="absolute w-1/3 h-1/3 rounded-full bg-slate-800/30 z-10"/>
                 )}

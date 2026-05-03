@@ -35,7 +35,7 @@ export default function Dashboard({ color, state, onDrawCard, isPlayer, playerIn
       <div className="flex justify-between items-start mb-6">
         <div className="flex-1 min-w-0">
           <h2 style={{ fontFamily: 'Outfit, sans-serif' }} className={`text-2xl font-black truncate tracking-tight ${color === 'w' ? 'text-slate-50' : 'text-slate-300'}`}>
-            {playerInfo?.username || (color === 'w' ? 'Grandmaster' : 'Shadow')} {isPlayer ? '👑' : ''}
+            {playerInfo?.username || (isPlayer ? (color === 'w' ? 'Grandmaster' : 'Shadow') : 'Consulting the Void...')} {isPlayer ? '👑' : ''}
           </h2>
           {title && (
             <div style={{

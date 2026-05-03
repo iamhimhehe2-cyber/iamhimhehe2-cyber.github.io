@@ -32,3 +32,110 @@ h1, h2, h3, h4, h5, h6 {
   0%, 100% { filter: drop-shadow(0 0 5px rgba(245,158,11,0.2)); }
   50% { filter: drop-shadow(0 0 20px rgba(245,158,11,0.6)); }
 }
+
+/* --- CYBERPUNK BOARD --- */
+.bg-cyberpunk-grid {
+  background-image: 
+    linear-gradient(rgba(6, 182, 212, 0.2) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(6, 182, 212, 0.2) 1px, transparent 1px);
+  background-size: 30px 30px;
+  background-color: #020617;
+  animation: scrollGrid 10s linear infinite;
+  box-shadow: inset 0 0 40px rgba(236, 72, 153, 0.5);
+}
+
+@keyframes scrollGrid {
+  from { background-position: 0 0; }
+  to { background-position: 30px 30px; }
+}
+
+.tile-cyber-dark {
+  background: #111827;
+  border: 1px solid rgba(236, 72, 153, 0.4);
+}
+.tile-cyber-light {
+  background: #1f2937;
+  border: 1px solid rgba(6, 182, 212, 0.4);
+}
+.reaction-cyber {
+  animation: cyberGlitch 0.4s ease-out forwards;
+}
+@keyframes cyberGlitch {
+  0% { box-shadow: inset 0 0 0px #ec4899; }
+  50% { box-shadow: inset 0 0 30px #ec4899; background: #ec489950; }
+  100% { box-shadow: inset 0 0 0px #ec4899; }
+}
+
+/* --- SPACE BOARD --- */
+.bg-space-stars {
+  background-color: #020617;
+  background-image: radial-gradient(white, rgba(255,255,255,.2) 2px, transparent 4px),
+                    radial-gradient(white, rgba(255,255,255,.15) 1px, transparent 3px),
+                    radial-gradient(white, rgba(255,255,255,.1) 2px, transparent 4px);
+  background-size: 550px 550px, 350px 350px, 250px 250px;
+  background-position: 0 0, 40px 60px, 130px 270px;
+  animation: starScroll 60s linear infinite;
+  box-shadow: inset 0 0 60px rgba(139, 92, 246, 0.4);
+}
+
+@keyframes starScroll {
+  from { background-position: 0 0, 40px 60px, 130px 270px; }
+  to { background-position: -550px 550px, -310px 410px, -120px 520px; }
+}
+
+.tile-space-dark {
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+}
+.tile-space-light {
+  background: rgba(30, 41, 59, 0.8);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+}
+.reaction-space {
+  animation: spaceRipple 0.5s ease-out forwards;
+}
+@keyframes spaceRipple {
+  0% { box-shadow: inset 0 0 0px #8b5cf6; transform: scale(1); z-index: 50; }
+  50% { box-shadow: inset 0 0 40px #8b5cf6; transform: scale(1.05); border-radius: 10px; z-index: 50; }
+  100% { box-shadow: inset 0 0 0px #8b5cf6; transform: scale(1); z-index: 0; }
+}
+
+/* --- UNDERWATER BOARD --- */
+.bg-underwater {
+  background: linear-gradient(180deg, #0284c7 0%, #082f49 100%);
+  position: relative;
+  overflow: hidden;
+  box-shadow: inset 0 0 40px rgba(0,0,0,0.5);
+}
+
+.bg-underwater::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-image: radial-gradient(circle at 50% 120%, rgba(255,255,255,0.1) 0%, transparent 40%);
+  animation: bubblesFloat 8s infinite alternate ease-in-out;
+  pointer-events: none;
+}
+
+@keyframes bubblesFloat {
+  0% { transform: translateY(10px) scale(1); opacity: 0.5; }
+  100% { transform: translateY(-20px) scale(1.1); opacity: 1; }
+}
+
+.tile-water-dark {
+  background: rgba(3, 105, 161, 0.6);
+  border: 1px solid rgba(14, 165, 233, 0.2);
+  backdrop-filter: blur(2px);
+}
+.tile-water-light {
+  background: rgba(14, 165, 233, 0.5);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  backdrop-filter: blur(2px);
+}
+.reaction-water {
+  animation: waterSplash 0.5s ease-out forwards;
+}
+@keyframes waterSplash {
+  0% { box-shadow: 0 0 0 0px rgba(56, 189, 248, 0.6); background: rgba(56,189,248,0.8); z-index: 50; }
+  100% { box-shadow: 0 0 0 20px rgba(56, 189, 248, 0); background: transparent; z-index: 0; }
+}

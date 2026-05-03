@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Routes, Route, useNavigate } from 'react-router-dom';
-import { Peer } from 'peerjs';
+import mqtt from 'mqtt';
 import Board from './components/Board';
 import Dashboard from './components/Dashboard';
 import Learning from './components/Learning';
@@ -36,8 +36,8 @@ export default function App() {
   const [quickMatchMsg, setQuickMatchMsg] = useState('');
   const [networkErrorMsg, setNetworkErrorMsg] = useState('');
   const [opponentProfile, setOpponentProfile] = useState(null);
-  const peerRef = useRef(null);
-  const connRef = useRef(null);
+  const mqttClientRef = useRef(null);
+  const publishTopicRef = useRef('');
   
   // Force update document title for verification
   useEffect(() => {
@@ -88,17 +88,19 @@ export default function App() {
         setTimeout(() => setLevelUpData({ newLevel, coinsEarned: rewards.coins }), 800);
       }
       // Send final state to opponent if online
-      if (connRef.current) {
-        connRef.current.send(gameState);
+      if (mqttClientRef.current && publishTopicRef.current) {
+        mqttClientRef.current.publish(publishTopicRef.current, JSON.stringify(gameState));
       }
     }
   }, [gameState.winner, gameMode, playerColor, xpAwarded, profile]);
 
   // AI moves
   useEffect(() => {
-    if (gameMode && gameMode.startsWith('ai')) {
+    // SECURE CHECK: Only run AI if gameMode specifically starts with "ai-"
+    if (gameMode && gameMode.startsWith('ai-')) {
       if (gameState.turn !== playerColor && !gameState.winner) {
-        const level = parseInt(gameMode.split('-')[1]);
+        const levelStr = gameMode.split('-')[1];
+        const level = parseInt(levelStr) || 1;
         const timer = setTimeout(() => {
           let st = gameState;
           if (st.points[st.turn] >= 5) {
@@ -114,224 +116,198 @@ export default function App() {
     }
   }, [gameState, gameMode, playerColor]);
 
-  // Cleanup peer
-  useEffect(() => () => { if (peerRef.current) peerRef.current.destroy(); }, []);
+  // Cleanup
+  useEffect(() => () => { if (mqttClientRef.current) mqttClientRef.current.end(); }, []);
 
-  // ── Networking ──────────────────────────────────────────────────────────────
+  // ── Networking (MQTT Fallback) ──────────────────────────────────────────────
+  const BROKER_URL = 'wss://broker.emqx.io:8084/mqtt';
+
+  const broadcastState = (st) => {
+    if ((gameMode === 'online' || gameMode === 'quick') && mqttClientRef.current && publishTopicRef.current) {
+      mqttClientRef.current.publish(publishTopicRef.current, JSON.stringify(st));
+    }
+  };
+
   const startHosting = () => {
     setNetworkErrorMsg('');
-    if (peerRef.current) peerRef.current.destroy();
+    if (mqttClientRef.current) mqttClientRef.current.end();
 
-    // Generate a simple 6-character room code without the CHESS- prefix to avoid spam filters
     const randomId = Math.random().toString(36).substring(2,8).toUpperCase();
-    const newPeer = new Peer(randomId, { debug: 0 }); // Use pure defaults
-
-    newPeer.on('open', id => { 
-      setPeerId(id); 
-      setConnectionStatus('hosting'); 
-    });
+    const topicHost = `chess-ascended/room/${randomId}/host`;
+    const topicClient = `chess-ascended/room/${randomId}/client`;
+    publishTopicRef.current = topicHost;
     
-    newPeer.on('connection', conn => {
-      connRef.current = conn;
-      setConnectionStatus('connected');
-      setGameMode('online'); setPlayerColor('w');
-      conn.on('data', data => {
+    setPeerId(randomId);
+    setConnectionStatus('hosting');
+
+    const client = mqtt.connect(BROKER_URL);
+    mqttClientRef.current = client;
+
+    client.on('connect', () => {
+      client.subscribe(topicClient);
+    });
+
+    client.on('message', (topic, message) => {
+      try {
+        const data = JSON.parse(message.toString());
         if (data?.type === 'IDENTITY') {
           setOpponentProfile(data.profile);
+          setConnectionStatus('connected');
+          setGameMode('online'); setPlayerColor('w');
+          
+          client.publish(topicHost, JSON.stringify({ 
+            type: 'IDENTITY', 
+            profile: {
+              username: profile.username, level: profile.level, wins: profile.wins,
+              totalGames: profile.totalGames, winStreak: profile.winStreak, activeEffect: profile.activeEffect
+            }
+          }));
+          client.publish(topicHost, JSON.stringify(createInitialState()));
+          navigate('/play');
         } else {
           setGameState(data);
         }
-      });
-      conn.on('open', () => {
-        conn.send({ 
-          type: 'IDENTITY', 
-          profile: {
-            username: profile.username,
-            level: profile.level,
-            wins: profile.wins,
-            totalGames: profile.totalGames,
-            winStreak: profile.winStreak,
-            activeEffect: profile.activeEffect
-          }
-        });
-        conn.send(createInitialState());
-      });
-      conn.on('error', () => { setConnectionStatus('disconnected'); setNetworkErrorMsg('Player disconnected.'); });
-      navigate('/play');
+      } catch(e) {}
     });
-    
-    newPeer.on('error', err => { 
-      setConnectionStatus('disconnected'); 
-      setNetworkErrorMsg('Server rejected connection. Please wait 15 minutes before hosting again or try another network. (Rate Limiting)');
+
+    client.on('error', (err) => {
+      setConnectionStatus('disconnected');
+      setNetworkErrorMsg('Failed to host. ' + err.message);
     });
-    peerRef.current = newPeer;
   };
 
   const joinGame = () => {
     if (!targetJoinId) return;
     setNetworkErrorMsg('');
-    if (peerRef.current) peerRef.current.destroy();
+    if (mqttClientRef.current) mqttClientRef.current.end();
     
-    const newPeer = new Peer({ debug: 0 });
+    const roomId = targetJoinId.toUpperCase();
+    const topicHost = `chess-ascended/room/${roomId}/host`;
+    const topicClient = `chess-ascended/room/${roomId}/client`;
+    publishTopicRef.current = topicClient;
+    
+    setConnectionStatus('connecting');
 
-    newPeer.on('open', () => {
-      const conn = newPeer.connect(targetJoinId.toUpperCase(), { reliable: true });
-      connRef.current = conn;
-      setConnectionStatus('connecting');
-      
-      conn.on('open', () => { 
-        setConnectionStatus('connected'); 
-        setGameMode('online'); 
-        setPlayerColor('b'); 
-        conn.send({ 
-          type: 'IDENTITY', 
-          profile: {
-            username: profile.username,
-            level: profile.level,
-            wins: profile.wins,
-            totalGames: profile.totalGames,
-            winStreak: profile.winStreak,
-            activeEffect: profile.activeEffect
-          }
-        });
-        navigate('/play');
-      });
-      conn.on('data', data => {
+    const client = mqtt.connect(BROKER_URL);
+    mqttClientRef.current = client;
+
+    client.on('connect', () => {
+      client.subscribe(topicHost);
+      client.publish(topicClient, JSON.stringify({ 
+        type: 'IDENTITY', 
+        profile: {
+          username: profile.username, level: profile.level, wins: profile.wins,
+          totalGames: profile.totalGames, winStreak: profile.winStreak, activeEffect: profile.activeEffect
+        }
+      }));
+      setConnectionStatus('connected');
+      setGameMode('online'); setPlayerColor('b');
+      navigate('/play');
+    });
+
+    client.on('message', (topic, message) => {
+      try {
+        const data = JSON.parse(message.toString());
         if (data?.type === 'IDENTITY') {
           setOpponentProfile(data.profile);
         } else {
           setGameState(data);
         }
-      });
-      conn.on('error', () => { 
-        setNetworkErrorMsg('Disconnected from host.'); 
-        setConnectionStatus('disconnected'); 
-      });
+      } catch(e) {}
     });
 
-    newPeer.on('error', err => { 
+    client.on('error', (err) => {
       setConnectionStatus('disconnected');
-      setNetworkErrorMsg('Could not join room. Host may be offline or invalid code.');
+      setNetworkErrorMsg('Could not join room. ' + err.message);
     });
-
-    peerRef.current = newPeer;
   };
 
   const cancelQMRef = useRef(false);
 
   const startQuickMatch = () => {
+    resetNetworking();
     cancelQMRef.current = false;
     setQuickMatchStatus('searching');
-    setQuickMatchMsg('Connecting to network...');
-    let currentSlot = 1;
-    let fallbackTimeout = null;
+    setQuickMatchMsg('Opening Void Gates...');
 
-    const searchPeer = new Peer({ debug: 0 });
-    peerRef.current = searchPeer;
+    const client = mqtt.connect(BROKER_URL);
+    mqttClientRef.current = client;
+    const myId = Math.random().toString(36).substring(2,12);
+    const matchmakingTopic = `chess-ascended/matchmaking`;
 
-    const tryNextSlot = () => {
-      if (cancelQMRef.current) return;
+    client.on('connect', () => {
+      client.subscribe(matchmakingTopic);
+      setTimeout(() => {
+        if (cancelQMRef.current) return;
+        client.publish(matchmakingTopic, JSON.stringify({ type: 'LOOKING', id: myId }));
+      }, 500);
+    });
 
-      if (currentSlot > QM_TOTAL) {
-        searchPeer.destroy();
-        const slot = randomSlot();
-        const hostId = `CHESSQM${String(slot).padStart(3,'0')}H`; // Removed hyphen for strict filter bypass
-        setQuickMatchMsg(`Hosting match on Channel ${slot}...`);
-        
-        const hostPeer = new Peer(hostId, { debug: 0 });
-        hostPeer.on('open', () => {
-          if (cancelQMRef.current) { hostPeer.destroy(); return; }
-          setPeerId(String(slot));
-          setQuickMatchStatus('waiting');
-          setQuickMatchMsg(`Waiting for opponent...`);
-        });
-        hostPeer.on('connection', conn => {
-          if (cancelQMRef.current) { conn.close(); return; }
-          connRef.current = conn;
-          setConnectionStatus('connected');
-          setGameMode('quick'); setPlayerColor('w');
-          setQuickMatchStatus('found');
-          conn.on('data', data => {
-            if (data?.type === 'IDENTITY') {
-              setOpponentProfile(data.profile);
-            } else {
-              setGameState(data);
-            }
-          });
-          conn.on('open', () => {
-            conn.send({ 
-          type: 'IDENTITY', 
-          profile: {
-            username: profile.username,
-            level: profile.level,
-            wins: profile.wins,
-            totalGames: profile.totalGames,
-            winStreak: profile.winStreak,
-            activeEffect: profile.activeEffect
+    let foundMatch = false;
+
+    client.on('message', (topic, message) => {
+      if (cancelQMRef.current || foundMatch) return;
+      try {
+        const data = JSON.parse(message.toString());
+        if (topic === matchmakingTopic) {
+          if (data.type === 'LOOKING' && data.id !== myId) {
+            foundMatch = true;
+            client.unsubscribe(matchmakingTopic);
+            
+            const isHost = myId < data.id;
+            const roomId = isHost ? `${myId}-${data.id}` : `${data.id}-${myId}`;
+            const topicHost = `chess-ascended/room/${roomId}/host`;
+            const topicClient = `chess-ascended/room/${roomId}/client`;
+            
+            publishTopicRef.current = isHost ? topicHost : topicClient;
+            
+            setQuickMatchStatus('found');
+            setConnectionStatus('connected');
+            setGameMode('quick'); 
+            setPlayerColor(isHost ? 'w' : 'b');
+
+            client.subscribe(isHost ? topicClient : topicHost);
+            
+            const profileData = {
+              type: 'IDENTITY',
+              profile: {
+                username: profile.username, level: profile.level, wins: profile.wins,
+                totalGames: profile.totalGames, winStreak: profile.winStreak, activeEffect: profile.activeEffect
+              }
+            };
+            
+            setTimeout(() => {
+              client.publish(publishTopicRef.current, JSON.stringify(profileData));
+              if (isHost) client.publish(publishTopicRef.current, JSON.stringify(createInitialState()));
+            }, 500);
+
+            navigate('/play');
           }
-        });
-            conn.send(createInitialState());
-          });
-          navigate('/play');
-        });
-        hostPeer.on('error', (err) => {
-          setQuickMatchStatus('failed');
-          setQuickMatchMsg('Could not host match. ' + (err.message || ''));
-        });
-        peerRef.current = hostPeer;
-        return;
-      }
-
-      const targetId = `CHESSQM${String(currentSlot).padStart(3,'0')}H`;
-      setQuickMatchMsg(`Scanning Channel ${currentSlot}/${QM_TOTAL}`);
-      
-      const conn = searchPeer.connect(targetId, { reliable: true });
-      
-      // Fallback if the connection hangs without throwing 'peer-unavailable'
-      fallbackTimeout = setTimeout(() => {
-         currentSlot++;
-         tryNextSlot();
-      }, 700);
-
-      conn.on('open', () => {
-        clearTimeout(fallbackTimeout);
-        if (cancelQMRef.current) { conn.close(); return; }
-        connRef.current = conn;
-        setConnectionStatus('connected');
-        setGameMode('quick'); setPlayerColor('b');
-        setQuickMatchStatus('found');
-        conn.send({ type: 'IDENTITY', profile: profile });
-        navigate('/play');
-      });
-      conn.on('data', data => {
-        if (data?.type === 'IDENTITY') {
-          setOpponentProfile(data.profile);
         } else {
-          setGameState(data);
+          if (data?.type === 'IDENTITY') {
+            setOpponentProfile(data.profile);
+          } else {
+            setGameState(data);
+          }
         }
-      });
-    };
-
-    searchPeer.on('open', () => {
-      tryNextSlot();
+      } catch(e) {}
     });
 
-    searchPeer.on('error', (err) => {
-      if (err.type === 'peer-unavailable') {
-         if (fallbackTimeout) clearTimeout(fallbackTimeout);
-         currentSlot++;
-         // Adding a micro-delay prevents spamming the server instantly 10 times and getting rate-limited
-         setTimeout(tryNextSlot, 150);
-      } else {
-         setQuickMatchStatus('failed');
-         setQuickMatchMsg('Network Error: ' + err.message);
-      }
+    client.on('error', (err) => {
+      if (cancelQMRef.current) return;
+      setQuickMatchStatus('failed');
+      setQuickMatchMsg('Network Error: ' + err.message);
     });
+
+    setTimeout(() => {
+      if (cancelQMRef.current || foundMatch) return;
+      setQuickMatchMsg('Waiting for a challenger...');
+    }, 3000);
   };
 
   const cancelQuickMatch = () => {
     cancelQMRef.current = true;
-    if (peerRef.current) peerRef.current.destroy();
+    if (mqttClientRef.current) mqttClientRef.current.end();
     setQuickMatchStatus('idle');
     setConnectionStatus('disconnected');
     setNetworkErrorMsg('');
@@ -340,7 +316,7 @@ export default function App() {
 
   const resetNetworking = () => {
     cancelQMRef.current = true;
-    if (peerRef.current) peerRef.current.destroy();
+    if (mqttClientRef.current) mqttClientRef.current.end();
     setConnectionStatus('disconnected');
     setGameMode(null);
     setShowJoinPrompt(false);
@@ -348,8 +324,10 @@ export default function App() {
     setXpAwarded(false);
     setNetworkErrorMsg('');
     setOpponentProfile(null);
+    publishTopicRef.current = '';
     navigate('/');
   };
+
 
   const handleMove = (move) => {
     const next = executeMove(gameState, move);
@@ -361,23 +339,21 @@ export default function App() {
       setProfile(updated);
     }
 
-    if ((gameMode === 'online' || gameMode === 'quick') && connRef.current) {
-      connRef.current.send(next);
-    }
+    broadcastState(next);
   };
 
   const handleDrawCard = () => {
     const { nextState, drawnCard } = drawCard(gameState, playerColor);
     if (drawnCard) {
       setGameState(nextState);
-      if ((gameMode === 'online' || gameMode === 'quick') && connRef.current) connRef.current.send(nextState);
+      broadcastState(nextState);
     }
   };
 
   const handleDrawCardOpponent = () => {
     const { nextState } = drawCard(gameState, playerColor === 'w' ? 'b' : 'w');
     setGameState(nextState);
-    if ((gameMode === 'online' || gameMode === 'quick') && connRef.current) connRef.current.send(nextState);
+    broadcastState(nextState);
   };
 
   const startGame = (mode, color='w') => {
@@ -730,7 +706,7 @@ export default function App() {
 
             {/* Chess Board */}
             <div style={{flex:'1 1 0',maxWidth:'75vh',minWidth:280}}>
-              <Board state={gameState} onMove={handleMove} playerColor={gameMode==='pvp'?null:playerColor} captureEffect={profile.activeEffect || 'none'} activeSkin={profile.activeSkin || 'none'}/>
+              <Board state={gameState} onMove={handleMove} playerColor={gameMode==='pvp'?null:playerColor} captureEffect={profile.activeEffect || 'none'} activeSkin={profile.activeSkin || 'none'} activeBoard={profile.activeBoard || 'classic'}/>
             </div>
 
             {/* Player Dashboard */}

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { SHOP_ITEMS, LEVEL_EFFECTS, SKINS, buyItem, buySkin, setActiveEffect, setActiveSkin, getUnlockedEffects } from '../store/profile';
+import { SHOP_ITEMS, LEVEL_EFFECTS, SKINS, BOARDS, buyItem, buySkin, buyBoard, setActiveEffect, setActiveSkin, setActiveBoard, getUnlockedEffects } from '../store/profile';
 
 const EFFECT_STYLES = {
   none:      { bg:'transparent',   animation: '' },
@@ -53,6 +53,20 @@ export default function Shop({ profile, onProfileChange, onBack }) {
     if (profile.coins < skin.price) { showNotif('Not enough coins! 🪙', false); return; }
     const { profile: updated, success } = buySkin(profile, skinId);
     if (success) { onProfileChange(updated); showNotif(`${skin.name} skin acquired!`); }
+  }
+
+  function handleBuyBoard(boardId) {
+    if (profile.ownedBoards.includes(boardId)) { showNotif('Already owned!', false); return; }
+    const board = BOARDS.find(b => b.id === boardId);
+    if (profile.coins < board.price) { showNotif('Not enough coins! 🪙', false); return; }
+    const { profile: updated, success } = buyBoard(profile, boardId);
+    if (success) { onProfileChange(updated); showNotif(`${board.name} board acquired!`); }
+  }
+
+  function handleSetBoard(boardId) {
+    const updated = setActiveBoard(profile, boardId);
+    onProfileChange(updated);
+    showNotif('Board equipped! 🗺️');
   }
 
   function handleSetSkin(skinId) {
@@ -186,7 +200,7 @@ export default function Shop({ profile, onProfileChange, onBack }) {
 
       {/* Tabs */}
       <div style={{display:'flex',gap:4,padding:'16px 24px 0',borderBottom:'1px solid rgba(255,255,255,0.07)'}}>
-        {['abilities','skins','effects'].map(t => (
+        {['abilities','skins','effects','boards'].map(t => (
           <button key={t} onClick={()=>setTab(t)} style={{
             padding:'10px 24px',borderRadius:'8px 8px 0 0',border:'none',cursor:'pointer',
             fontWeight:'bold',fontSize:14,transition:'all 0.2s',
@@ -194,7 +208,7 @@ export default function Shop({ profile, onProfileChange, onBack }) {
             color: tab===t ? '#fbbf24' : '#64748b',
             borderBottom: tab===t ? '2px solid #f59e0b' : '2px solid transparent'
           }}>
-            {t === 'abilities' ? '⚡ Abilities' : t === 'skins' ? '🎭 Skins' : '✨ Effects'}
+            {t === 'abilities' ? '⚡ Abilities' : t === 'skins' ? '🎭 Skins' : t === 'effects' ? '✨ Effects' : '🗺️ Boards'}
           </button>
         ))}
       </div>
@@ -294,6 +308,56 @@ export default function Shop({ profile, onProfileChange, onBack }) {
           </div>
         )}
 
+
+        {tab === 'boards' && (
+          <div>
+            <p style={{color:'#64748b',marginBottom:20,fontSize:14}}>
+              Immerse yourself in dynamic, animated environments. Equipping a board changes the arena background and interactions.
+            </p>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(220px,1fr))',gap:16}}>
+              {BOARDS.map(board => {
+                const owned = (profile.ownedBoards || ['classic']).includes(board.id);
+                const active = profile.activeBoard === board.id;
+                return (
+                  <div key={board.id} style={{
+                    background:'rgba(255,255,255,0.03)',
+                    border:`1px solid ${active?'#fbbf24':owned?'rgba(16,185,129,0.3)':'rgba(255,255,255,0.06)'}`,
+                    borderRadius:16,padding:24,transition:'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                    boxShadow: active?'0 0 30px rgba(251,191,36,0.1)':'none'
+                  }}>
+                    <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:12}}>
+                       <div style={{fontSize:40}}>{board.icon}</div>
+                    </div>
+                    <div style={{fontWeight:'bold',fontSize:18,marginBottom:4}}>{board.name}</div>
+                    <div style={{fontSize:13,color:'#94a3b8',marginBottom:20}}>{board.desc}</div>
+                    <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+                      <span style={{fontWeight:'bold',color:'#fbbf24',fontSize:16}}>
+                        {board.price === 0 ? 'Free' : `🪙 ${board.price}`}
+                      </span>
+                      {owned ? (
+                        <button onClick={()=>handleSetBoard(board.id)} style={{
+                          padding:'8px 16px',borderRadius:8,border:'1px solid rgba(16,185,129,0.4)',
+                          background: active ? 'rgba(16,185,129,0.2)' : 'transparent',
+                          color: active ? '#34d399' : '#94a3b8',
+                          fontWeight:'bold',fontSize:13,cursor:'pointer'
+                        }}>
+                          {active ? 'Equipped' : 'Equip'}
+                        </button>
+                      ) : (
+                        <button onClick={()=>handleBuyBoard(board.id)} style={{
+                          padding:'8px 16px',borderRadius:8,border:'none',
+                          background: profile.coins >= board.price ? 'linear-gradient(135deg,#f59e0b,#f97316)' : 'rgba(255,255,255,0.05)',
+                          color: profile.coins >= board.price ? '#1a1a1a' : '#475569',
+                          fontWeight:'bold',fontSize:13,cursor: profile.coins >= board.price ? 'pointer' : 'not-allowed',
+                        }}>Buy</button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
         {tab === 'effects' && (
           <div>
             <p style={{color:'#64748b',marginBottom:20,fontSize:14}}>
