@@ -87,7 +87,7 @@ export default function Board({ state, onMove, playerColor, captureEffect = 'non
 
   return (
     <div className="flex flex-col items-center w-full">
-      <div className={`grid grid-cols-8 grid-rows-8 w-full h-full aspect-square border-[6px] border-slate-800 rounded-lg shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden ${activeBoard === 'cyberpunk' ? 'bg-cyberpunk-grid' : activeBoard === 'space' ? 'bg-space-stars' : activeBoard === 'underwater' ? 'bg-underwater' : ''} `}>
+      <div className={`grid grid-cols-8 grid-rows-8 w-full h-full aspect-square border-[6px] border-slate-800 rounded-lg shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden ${activeBoard !== 'classic' ? 'bg-slate-900/40 backdrop-blur-sm border-white/20' : ''}`}>
         {state.board.map((row, r) =>
           row.map((piece, c) => {
             const isSelected = selectedSquare?.r === r && selectedSquare?.c === c;

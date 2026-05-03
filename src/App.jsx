@@ -641,7 +641,7 @@ export default function App() {
       } />
 
       <Route path="/play" element={
-        <div style={{minHeight:'100vh',background:'#0f172a',display:'flex',flexDirection:'column',padding:'0 0 20px'}}>
+        <div className={profile.activeBoard === 'cyberpunk' ? 'bg-cyberpunk-grid' : profile.activeBoard === 'space' ? 'bg-space-stars' : profile.activeBoard === 'underwater' ? 'bg-underwater' : ''} style={{minHeight:'100vh',background: profile.activeBoard === 'classic' ? '#0f172a' : 'transparent',display:'flex',flexDirection:'column',padding:'0 0 20px'}}>
           <ProfileBar profile={profile}/>
           
           {levelUpData && (
