@@ -8,6 +8,7 @@ import Shop from './components/Shop';
 import ProfileBar from './components/ProfileBar';
 import LevelUpModal from './components/LevelUpModal';
 import AFKZone from './components/AFKZone';
+import Environment from './components/Environment';
 import Quests from './components/Quests';
 import { createInitialState, executeMove, drawCard } from './chess-engine/engine';
 import { getAIMove } from './chess-engine/ai';
@@ -456,7 +457,16 @@ export default function App() {
 
                     <div style={{flex:1, minWidth:0}}>
                       <p style={{fontSize:11, color:'#64748b', textTransform:'uppercase', letterSpacing:1.5, marginBottom:2, fontWeight:900}}>Current Status</p>
-                      <h3 style={{fontSize:22, fontWeight:900, color:'#f8fafc', margin:0, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{profile.username}</h3>
+                      <h3 style={{
+                        fontSize:22, fontWeight:900, margin:0, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
+                        ...(profile.nameGold ? {
+                          background:'linear-gradient(135deg, #fbbf24, #fef3c7, #d97706, #fbbf24)',
+                          backgroundSize:'200% 200%',
+                          WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent',
+                          animation:'goldShimmer 3s ease infinite',
+                          filter:'drop-shadow(0 0 8px rgba(251,191,36,0.5))'
+                        } : { color:'#f8fafc' })
+                      }}>{profile.username}</h3>
                       <div style={{
                         fontSize:11, fontWeight:900, textTransform:'uppercase', letterSpacing:2, marginTop:4,
                         background: getTitleColor(profile.level).includes('gradient') ? getTitleColor(profile.level) : 'none', 
@@ -641,7 +651,8 @@ export default function App() {
       } />
 
       <Route path="/play" element={
-        <div className={profile.activeBoard === 'cyberpunk' ? 'bg-cyberpunk-grid' : profile.activeBoard === 'space' ? 'bg-space-stars' : profile.activeBoard === 'underwater' ? 'bg-underwater' : ''} style={{minHeight:'100vh',background: profile.activeBoard === 'classic' ? '#0f172a' : 'transparent',display:'flex',flexDirection:'column',padding:'0 0 20px'}}>
+        <div className={profile.activeBoard === 'cyberpunk' ? 'bg-cyberpunk-grid' : profile.activeBoard === 'space' ? 'bg-space-stars' : profile.activeBoard === 'underwater' ? 'bg-underwater' : ''} style={{minHeight:'100vh',background: profile.activeBoard === 'classic' ? '#0f172a' : 'transparent',display:'flex',flexDirection:'column',padding:'0 0 20px',position:'relative'}}>
+          <Environment activeBoard={profile.activeBoard || 'classic'} />
           <ProfileBar profile={profile}/>
           
           {levelUpData && (

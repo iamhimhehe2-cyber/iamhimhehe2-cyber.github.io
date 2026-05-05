@@ -31,7 +31,16 @@ export default function ProfileBar({ profile }) {
       <div style={{flex:1, minWidth:0}}>
         <div style={{display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:5}}>
           <div style={{display:'flex', alignItems:'center', gap:8, minWidth:0}}>
-            <span style={{fontSize:15, fontWeight:900, color:'#f8fafc', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{profile.username}</span>
+            <span style={{
+              fontSize:15, fontWeight:900, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
+              ...(profile.nameGold ? {
+                background:'linear-gradient(135deg, #fbbf24, #fef3c7, #d97706, #fbbf24)',
+                backgroundSize:'200% 200%',
+                WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent',
+                animation:'goldShimmer 3s ease infinite',
+                filter:'drop-shadow(0 0 6px rgba(251,191,36,0.4))'
+              } : { color:'#f8fafc' })
+            }}>{profile.username}</span>
             {title && (
               <span style={{
                 fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: 1.5,

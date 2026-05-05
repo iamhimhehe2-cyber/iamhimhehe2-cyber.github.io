@@ -234,7 +234,19 @@ export function setActiveBoard(profile, boardId) {
   return updated;
 }
 
+// Names reserved by the ORIGINAL code — no one else can use them
+const RESERVED_NAMES = ['original', 'iamhimhehe'];
+
+export function isNameReserved(name, profile) {
+  const lower = name.trim().toLowerCase();
+  if (!RESERVED_NAMES.includes(lower)) return false;
+  // Allow if this profile has already redeemed ORIGINAL
+  if (profile.nameGold) return false;
+  return true;
+}
+
 export function setUsername(profile, name) {
+  if (isNameReserved(name, profile)) return profile; // silently block
   const updated = { ...profile, username: name.substring(0, 16) };
   saveProfile(updated);
   return updated;
@@ -260,6 +272,14 @@ export function redeemCode(profile, code) {
     updated = { ...updated, coins: updated.coins + 1000 };
     saveProfile(updated);
     rewards = '1000 Coins';
+  } else if (codeStr === 'ORIGINAL') {
+    updated = { ...updated, coins: updated.coins + 1000, nameGold: true };
+    saveProfile(updated);
+    rewards = '1000 Gold + Golden Name';
+  } else if (codeStr === 'STARTER') {
+    updated = { ...updated, coins: updated.coins + 5000, nameGold: true };
+    saveProfile(updated);
+    rewards = '5000 Gold + Golden Name';
   } else {
     return { profile, success: false, message: 'Invalid code!' };
   }
