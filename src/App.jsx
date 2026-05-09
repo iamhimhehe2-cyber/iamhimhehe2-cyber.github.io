@@ -12,7 +12,7 @@ import Environment from './components/Environment';
 import Quests from './components/Quests';
 import { createInitialState, executeMove, drawCard } from './chess-engine/engine';
 import { getAIMove } from './chess-engine/ai';
-import { loadProfile, saveProfile, awardXP, XP_REWARDS, setUsername, getTitle, getTitleColor, getWinRate, getXPForLevel, getXPForNextLevel, updateQuestProgress } from './store/profile';
+import { loadProfile, saveProfile, awardXP, XP_REWARDS, setUsername, getTitle, getTitleColor, getWinRate, getXPForLevel, getXPForNextLevel, updateQuestProgress, addReservedName } from './store/profile';
 
 // ── Quick Match slot helpers ──────────────────────────────────────────────────
 const QM_TOTAL = 10; // Low amount to ensure players actually match
@@ -37,12 +37,23 @@ export default function App() {
   const [quickMatchMsg, setQuickMatchMsg] = useState('');
   const [networkErrorMsg, setNetworkErrorMsg] = useState('');
   const [opponentProfile, setOpponentProfile] = useState(null);
+  const [isReserving, setIsReserving] = useState(false);
   const mqttClientRef = useRef(null);
   const publishTopicRef = useRef('');
   
   // Force update document title for verification
   useEffect(() => {
     document.title = `Chess: Ascended V0.0.2 | ${getTitle(profile)}`;
+    
+    // Announce reserved name on start to refresh registry
+    if (profile.nameGold && profile.reservedName) {
+      const client = mqtt.connect(BROKER_URL);
+      client.on('connect', () => {
+        client.publish(`chess-ascended/registry/${profile.reservedName.toLowerCase()}`, 
+          JSON.stringify({ uid: profile.uid }), { retain: true });
+        setTimeout(() => client.end(), 2000);
+      });
+    }
   }, [profile]);
 
   // Award XP when the game ends
@@ -153,6 +164,18 @@ export default function App() {
         const data = JSON.parse(message.toString());
         if (data?.type === 'IDENTITY') {
           setOpponentProfile(data.profile);
+          
+          // Learn reserved name if opponent has it
+          if (data.profile.nameGold) {
+            let updated = addReservedName(profile, data.profile.username);
+            // Handle conflict
+            if (data.profile.username.toLowerCase() === profile.username.toLowerCase() && !profile.nameGold) {
+              updated = setUsername(updated, `Guest_${Math.floor(Math.random()*9000)+1000}`);
+              setNetworkErrorMsg(`Name "${data.profile.username}" is reserved by its owner!`);
+            }
+            setProfile(updated);
+          }
+
           setConnectionStatus('connected');
           setGameMode('online'); setPlayerColor('w');
           
@@ -160,7 +183,8 @@ export default function App() {
             type: 'IDENTITY', 
             profile: {
               username: profile.username, level: profile.level, wins: profile.wins,
-              totalGames: profile.totalGames, winStreak: profile.winStreak, activeEffect: profile.activeEffect
+              totalGames: profile.totalGames, winStreak: profile.winStreak, activeEffect: profile.activeEffect,
+              nameGold: profile.nameGold
             }
           }));
           client.publish(topicHost, JSON.stringify(createInitialState()));
@@ -198,7 +222,8 @@ export default function App() {
         type: 'IDENTITY', 
         profile: {
           username: profile.username, level: profile.level, wins: profile.wins,
-          totalGames: profile.totalGames, winStreak: profile.winStreak, activeEffect: profile.activeEffect
+          totalGames: profile.totalGames, winStreak: profile.winStreak, activeEffect: profile.activeEffect,
+          nameGold: profile.nameGold
         }
       }));
       setConnectionStatus('connected');
@@ -211,6 +236,14 @@ export default function App() {
         const data = JSON.parse(message.toString());
         if (data?.type === 'IDENTITY') {
           setOpponentProfile(data.profile);
+          if (data.profile.nameGold) {
+            let updated = addReservedName(profile, data.profile.username);
+            if (data.profile.username.toLowerCase() === profile.username.toLowerCase() && !profile.nameGold) {
+              updated = setUsername(updated, `Guest_${Math.floor(Math.random()*9000)+1000}`);
+              setNetworkErrorMsg(`Name "${data.profile.username}" is reserved by its owner!`);
+            }
+            setProfile(updated);
+          }
         } else {
           setGameState(data);
         }
@@ -273,7 +306,8 @@ export default function App() {
               type: 'IDENTITY',
               profile: {
                 username: profile.username, level: profile.level, wins: profile.wins,
-                totalGames: profile.totalGames, winStreak: profile.winStreak, activeEffect: profile.activeEffect
+                totalGames: profile.totalGames, winStreak: profile.winStreak, activeEffect: profile.activeEffect,
+                nameGold: profile.nameGold
               }
             };
             
@@ -287,6 +321,14 @@ export default function App() {
         } else {
           if (data?.type === 'IDENTITY') {
             setOpponentProfile(data.profile);
+            if (data.profile.nameGold) {
+              let updated = addReservedName(profile, data.profile.username);
+              if (data.profile.username.toLowerCase() === profile.username.toLowerCase() && !profile.nameGold) {
+                updated = setUsername(updated, `Guest_${Math.floor(Math.random()*9000)+1000}`);
+                setNetworkErrorMsg(`Name "${data.profile.username}" is reserved by its owner!`);
+              }
+              setProfile(updated);
+            }
           } else {
             setGameState(data);
           }
@@ -329,6 +371,47 @@ export default function App() {
     navigate('/');
   };
 
+
+  const equipName = () => {
+    if (!profile.nameGold) {
+       setNetworkErrorMsg("You need the STARTER pack to officially reserve names!");
+       return;
+    }
+    if (profile.username.length < 3) {
+      setNetworkErrorMsg("Name too short!");
+      return;
+    }
+    setIsReserving(true);
+    setNetworkErrorMsg("Checking global void registry...");
+    const client = mqtt.connect(BROKER_URL);
+    const topic = `chess-ascended/registry/${profile.username.toLowerCase()}`;
+    let taken = false;
+
+    client.on('connect', () => {
+      client.subscribe(topic);
+      setTimeout(() => {
+        if (!taken) {
+          client.publish(topic, JSON.stringify({ uid: profile.uid }), { retain: true });
+          const updated = { ...profile, reservedName: profile.username };
+          setProfile(updated);
+          saveProfile(updated);
+          setNetworkErrorMsg("Success! Name officially equipped & reserved.");
+        }
+        setIsReserving(false);
+        client.end();
+      }, 2000);
+    });
+
+    client.on('message', (t, msg) => {
+      try {
+        const data = JSON.parse(msg.toString());
+        if (data.uid !== profile.uid) {
+          taken = true;
+          setNetworkErrorMsg(`Name "${profile.username}" is already owned by someone else!`);
+        }
+      } catch(e) {}
+    });
+  };
 
   const handleMove = (move) => {
     const next = executeMove(gameState, move);
@@ -518,20 +601,37 @@ export default function App() {
 
                 {/* Name Entry */}
                 <div style={{marginBottom:24, background:'rgba(255,255,255,0.03)', padding:16, borderRadius:12, border:'1px solid rgba(255,255,255,0.05)'}}>
-                  <p style={{fontSize:11, color:'#64748b', textTransform:'uppercase', letterSpacing:1, marginBottom:8}}>Update Nickname</p>
-                  <input 
-                    type="text" 
-                    value={profile.username} 
-                    onChange={e => {
-                      const updated = setUsername(profile, e.target.value);
-                      setProfile(updated);
-                    }}
-                    placeholder="Enter name..."
-                    style={{
-                      width:'100%', background:'rgba(0,0,0,0.2)', border:'1px solid rgba(255,255,255,0.1)',
-                      padding:'10px 14px', borderRadius:8, color:'#fff', outline:'none', fontSize:14
-                    }}
-                  />
+                  <p style={{fontSize:11, color:'#64748b', textTransform:'uppercase', letterSpacing:1, marginBottom:8}}>
+                    Update Nickname 
+                    {profile.reservedName === profile.username && <span style={{color:'#fbbf24', marginLeft:8}}>✅ RESERVED</span>}
+                  </p>
+                  <div style={{display:'flex', gap:8}}>
+                    <input 
+                      type="text" 
+                      value={profile.username} 
+                      onChange={e => {
+                        const updated = setUsername(profile, e.target.value);
+                        setProfile(updated);
+                      }}
+                      placeholder="Enter name..."
+                      style={{
+                        flex:1, background:'rgba(0,0,0,0.2)', border:'1px solid rgba(255,255,255,0.1)',
+                        padding:'10px 14px', borderRadius:8, color:'#fff', outline:'none', fontSize:14
+                      }}
+                    />
+                    <button 
+                      onClick={equipName}
+                      disabled={isReserving || profile.reservedName === profile.username}
+                      style={{
+                        padding:'0 16px', borderRadius:8, border:'none', cursor:'pointer', fontWeight:'bold',
+                        background: profile.reservedName === profile.username ? 'rgba(16,185,129,0.2)' : 'linear-gradient(135deg,#f59e0b,#f97316)',
+                        color: profile.reservedName === profile.username ? '#34d399' : '#000',
+                        fontSize:12, opacity: isReserving ? 0.7 : 1
+                      }}
+                    >
+                      {isReserving ? '...' : profile.reservedName === profile.username ? 'Equipped' : 'Equip & Reserve'}
+                    </button>
+                  </div>
                 </div>
 
                 {networkErrorMsg && (

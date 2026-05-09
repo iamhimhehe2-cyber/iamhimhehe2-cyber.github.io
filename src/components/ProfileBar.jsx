@@ -41,6 +41,9 @@ export default function ProfileBar({ profile }) {
                 filter:'drop-shadow(0 0 6px rgba(251,191,36,0.4))'
               } : { color:'#f8fafc' })
             }}>{profile.username}</span>
+            {profile.nameGold && (
+              <span title="Verified Creator" style={{fontSize:14, filter:'drop-shadow(0 0 4px #fbbf24)'}}>🛡️</span>
+            )}
             {title && (
               <span style={{
                 fontSize: 10, fontWeight: 900, textTransform: 'uppercase', letterSpacing: 1.5,

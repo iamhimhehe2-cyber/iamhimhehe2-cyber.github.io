@@ -86,7 +86,10 @@ function defaultProfile() {
     questProgress: {},       // { questId: currentProgress }
     dailyQuestIds: [],       // Current 5 quests
     lastQuestReset: null,    // Date string
-    completedQuests: []      // Completed permanent quest IDs
+    completedQuests: [],     // Completed permanent quest IDs
+    globallyReservedNames: [], // Names learned from other STARTER claimants
+    uid: Math.random().toString(36).substring(2, 12),
+    reservedName: null       // The name this user has officially "Equipped"
   };
 }
 
@@ -97,6 +100,9 @@ export function loadProfile() {
     if (!parsed.ownedBoards) parsed.ownedBoards = ['classic'];
     if (!parsed.activeBoard) parsed.activeBoard = 'classic';
     if (!parsed.redeemedCodes) parsed.redeemedCodes = [];
+    if (!parsed.globallyReservedNames) parsed.globallyReservedNames = [];
+    if (!parsed.uid) parsed.uid = Math.random().toString(36).substring(2, 12);
+    if (!parsed.reservedName) parsed.reservedName = null;
     return raw ? { ...defaultProfile(), ...parsed } : defaultProfile();
   } catch { return defaultProfile(); }
 }
@@ -239,10 +245,26 @@ const RESERVED_NAMES = ['original', 'iamhimhehe'];
 
 export function isNameReserved(name, profile) {
   const lower = name.trim().toLowerCase();
-  if (!RESERVED_NAMES.includes(lower)) return false;
-  // Allow if this profile has already redeemed ORIGINAL
+  const dynamic = profile.globallyReservedNames || [];
+  
+  // If it's the user's own reserved name, it's not reserved for THEM
+  if (profile.reservedName && profile.reservedName.toLowerCase() === lower) return false;
+
+  if (!RESERVED_NAMES.includes(lower) && !dynamic.includes(lower)) return false;
+  // Allow if this profile has already redeemed ORIGINAL or STARTER
   if (profile.nameGold) return false;
   return true;
+}
+
+export function addReservedName(profile, name) {
+  const lower = name.trim().toLowerCase();
+  const current = profile.globallyReservedNames || [];
+  if (current.includes(lower)) return profile;
+  if (RESERVED_NAMES.includes(lower)) return profile;
+  
+  const updated = { ...profile, globallyReservedNames: [...current, lower] };
+  saveProfile(updated);
+  return updated;
 }
 
 export function setUsername(profile, name) {
